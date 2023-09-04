@@ -1,6 +1,6 @@
-struct JobShopSchedule
+struct ShopSchedule
     instance::AbstractShop
-    objectiveFunction::Function
+    objectiveFunction::AbstractObjectiveFunction
     C::Array{Union{Int64,Nothing},2}
     objectiveValue::Int64
 end
