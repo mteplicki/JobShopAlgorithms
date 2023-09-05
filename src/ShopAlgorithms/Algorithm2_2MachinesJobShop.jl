@@ -81,8 +81,9 @@ function Schedule_Oij(
             end
         end
         # wątpliwe, być może trzeba przenieść pod end
-        LAST[i] = t + 1
+        
     end
+    LAST[i] = t + 1
     
     
 end
