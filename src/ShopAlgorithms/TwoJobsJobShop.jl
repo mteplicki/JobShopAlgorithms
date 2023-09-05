@@ -23,7 +23,7 @@ function TwoJobsJobShop(
             end
         end
     end
-    reconstructPath(n_i, p, μ, length(points) + 1, ONumber, previous)
+    return reconstructPath(n_i, p, μ, obstacles, points, length(points) + 1, ONumber, previous)
 end
 
 @enum PointType begin
@@ -49,6 +49,8 @@ struct Obstacle
     NW::Point
     SE::Point
     obstacleNumber::Int64
+    job1::Int64
+    job2::Int64
 end
 
 struct Successor
@@ -65,17 +67,59 @@ function reconstructPath(
     n_i::Array{Int64,1},
     p::Array{Union{Int64, Nothing},2},
     μ::Array{Union{Int64, Nothing},2},
+    obstacles::Vector{Obstacle},
+    points::Vector{Point},
     FNumber::Int64,
     ONumber::Int64,
     previous::Array{Int64,1}
 )
     path = Vector{Int64}()
     current = FNumber
-    while current != zeroPointNumber
+    while current != ONumber
         pushfirst!(path, current)
         current = previous[current]
     end
-    
+    t = [0,0]
+    currentJob = [0,0]
+    time = [Vector{Int64}(), Vector{Int64}()]
+    for (index, pointNumber) in enumerate(path)
+        nextPointNumber = path[index + 1]
+        nextPoint = points[nextPointNumber]
+        nextObstacleNumber = points[nextPointNumber].obstacleNumber
+        nextObstacle = obstacles[nextObstacleNumber]
+        nextObstacle.job1
+        if nextPoint.type == SE
+            for job in (currentJob[1] + 1):(nextObstacle.job1)
+                t[1] += p[1,nextObstacle.job]
+                push!(time[1], t[1])
+            end
+            for job in (currentJob[2] + 1):(nextObstacle.job2 - 1)
+                t[2] += p[2,nextObstacle.job]
+                push!(time[2], t[2])
+            end
+            t[2] = t[1]
+        elseif nextPoint.type == NW
+            for job in (currentJob[1] + 1):(nextObstacle.job1 - 1)
+                t[1] += p[1,nextObstacle.job]
+                push!(time[1], t[1])
+            end
+            for job in (currentJob[2] + 1):(nextObstacle.job2)
+                t[2] += p[2,nextObstacle.job]
+                push!(time[2], t[2])
+            end
+        else # F-type point
+            for job in (currentJob[1] + 1):(n_i[1])
+                t[1] += p[1,nextObstacle.job]
+                push!(time[1], t[1])
+            end
+            for job in (currentJob[2] + 1):(n_i[2])
+                t[2] += p[2,nextObstacle.job]
+                push!(time[2], t[2])
+            end
+        end
+    end
+    return time
+
 end
 function createPoints(
     n_i::Array{Int64,1},
@@ -99,7 +143,7 @@ function createPoints(
                 obstacleCount += 1
                 NWpoint = Point(Coordinate(distanceFromOrigin[1][k]-p[1,k], distanceFromOrigin[2][j]),obstacleCount, nothing, NW)
                 SEpoint = Point(Coordinate(distanceFromOrigin[1][k], distanceFromOrigin[2][j]-p[2,j]),obstacleCount, nothing, SE)
-                push!(obstacles, Obstacle(NWpoint, SEpoint, obstacleCount))
+                push!(obstacles, Obstacle(NWpoint, SEpoint, obstacleCount, k, j))
                 push!(points, NWpoint)
                 push!(points, SEpoint)
             end
