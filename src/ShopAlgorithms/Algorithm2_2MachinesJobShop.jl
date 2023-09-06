@@ -1,12 +1,15 @@
 function Algorithm2_2MachinesJobShop(
     n::Int64,
     m::Int64,
-    n_i::Array{Int64,1},
-    p::Array{Union{Int64, Nothing},2},
-    μ::Array{Union{Int64, Nothing},2},
-    d::Array{Int64,1}
+    n_i::Vector{Int},
+    p::Vector{Vector{Int}},
+    μ::Vector{Vector{Int}},
+    d::Vector{Int}
 )::ShopSchedule
     r = sum(n_i)
+    for job in p
+        @assert job .== 1 "jobs are not unit-length"
+    end
     A::OffsetVector{Union{Nothing, Tuple{Int64,Int64}}, Vector{Union{Nothing, Tuple{Int64,Int64}}}} = OffsetArray([nothing for i=0:r], -1)
     B::OffsetVector{Union{Nothing, Tuple{Int64,Int64}}, Vector{Union{Nothing, Tuple{Int64,Int64}}}} = OffsetArray([nothing for i=0:r], -1)
     if all(d .> 0)
@@ -51,14 +54,14 @@ function Schedule_Oij(
     O::Tuple{Int64,Int64},
     T1::Ref{Int64},
     T2::Ref{Int64},
-    LAST::Array{Int64,1},
+    LAST::Vector{Int},
     A::OffsetVector{Union{Nothing, Tuple{Int64,Int64}}, Vector{Union{Nothing, Tuple{Int64,Int64}}}},
     B::OffsetVector{Union{Nothing, Tuple{Int64,Int64}}, Vector{Union{Nothing, Tuple{Int64,Int64}}}},
-    μ::Array{Union{Int64, Nothing},2}
+    μ::Vector{Vector{Int}}
 )
     (i,j) = O
     t = -1
-    if μ[i,j] == 1
+    if μ[i][j] == 1
         if T1[] < LAST[i]
             t = LAST[i]
             A[t] = (i,j)

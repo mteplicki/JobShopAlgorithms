@@ -4,10 +4,10 @@ using DataStructures
 function TwoJobsJobShop(
     n::Int64,
     m::Int64,
-    n_i::Array{Int64,1},
-    p::Array{Union{Int64, Nothing},2},
-    μ::Array{Union{Int64, Nothing},2},
-    d::Array{Int64,1},
+    n_i::Vector{Int},
+    p::Vector{Vector{Int}},
+    μ::Vector{Vector{Int}},
+    d::Vector{Int},
 )
     @assert n == 2 "n not equals to 2"
     (points, obstacles, size) = createPoints(n_i, p, μ)
@@ -23,7 +23,7 @@ function TwoJobsJobShop(
             end
         end
     end
-    return reconstructPath(n_i, p, μ, obstacles, points, length(points) + 1, ONumber, previous)
+    return reconstructPath(n_i, p, obstacles, points, length(points) + 1, ONumber, previous)
 end
 
 @enum PointType begin
@@ -64,14 +64,13 @@ struct NetworkNode
 end
 
 function reconstructPath(
-    n_i::Array{Int64,1},
-    p::Array{Union{Int64, Nothing},2},
-    μ::Array{Union{Int64, Nothing},2},
+    n_i::Vector{Int},
+    p::Vector{Vector{Int}},
     obstacles::Vector{Obstacle},
     points::Vector{Point},
     FNumber::Int64,
     ONumber::Int64,
-    previous::Array{Int64,1}
+    previous::Vector{Int}
 )
     path = Vector{Int64}()
     current = FNumber
@@ -82,12 +81,13 @@ function reconstructPath(
     t = [0,0]
     currentJob = [0,0]
     time = [Vector{Int64}(), Vector{Int64}()]
+
+    #TODO do poprawy nextObstacleNumber
     for (index, pointNumber) in enumerate(path)
         nextPointNumber = path[index + 1]
         nextPoint = points[nextPointNumber]
         nextObstacleNumber = points[nextPointNumber].obstacleNumber
         nextObstacle = obstacles[nextObstacleNumber]
-        nextObstacle.job1
         if nextPoint.type == SE
             for job in (currentJob[1] + 1):(nextObstacle.job1)
                 t[1] += p[1,nextObstacle.job]
@@ -107,6 +107,7 @@ function reconstructPath(
                 t[2] += p[2,nextObstacle.job]
                 push!(time[2], t[2])
             end
+            t[1] = t[2]
         else # F-type point
             for job in (currentJob[1] + 1):(n_i[1])
                 t[1] += p[1,nextObstacle.job]
@@ -122,15 +123,15 @@ function reconstructPath(
 
 end
 function createPoints(
-    n_i::Array{Int64,1},
-    p::Array{Union{Int64, Nothing},2},
-    μ::Array{Union{Int64, Nothing},2}
+    n_i::Vector{Int},
+    p::Vector{Vector{Int}},
+    μ::Vector{Vector{Int}}
 )
     size = [0,0]
     distanceFromOrigin =[Vector{Int64}(),Vector{Int64}()] 
     for i=1:2
         for j in 1:n_i[i]
-            size[i] += p[i,j]
+            size[i] += p[i][j]
             push!(distanceFromOrigin[i], size[i])
         end
     end
@@ -139,11 +140,12 @@ function createPoints(
     obstacleCount = 0
     for j in 1:n_i[2]
         for k in 1:n_i[1]
-            if μ[1,k] == μ[2,j]
+            if μ[1][k] == μ[2][j]
                 obstacleCount += 1
-                NWpoint = Point(Coordinate(distanceFromOrigin[1][k]-p[1,k], distanceFromOrigin[2][j]),obstacleCount, nothing, NW)
-                SEpoint = Point(Coordinate(distanceFromOrigin[1][k], distanceFromOrigin[2][j]-p[2,j]),obstacleCount, nothing, SE)
-                push!(obstacles, Obstacle(NWpoint, SEpoint, obstacleCount, k, j))
+                NWpoint = Point(Coordinate(distanceFromOrigin[1][k]-p[1][k], distanceFromOrigin[2][j]),obstacleCount, nothing, NW)
+                SEpoint = Point(Coordinate(distanceFromOrigin[1][k], distanceFromOrigin[2][j]-p[2][j]),obstacleCount, nothing, SE)
+                obstacle = Obstacle(NWpoint, SEpoint, obstacleCount, k, j)
+                push!(obstacles, obstacle)
                 push!(points, NWpoint)
                 push!(points, SEpoint)
             end
@@ -160,7 +162,7 @@ end
 function createNetwork(
     points::Vector{Point},
     obstacles::Vector{Obstacle},
-    size::Array{Int64,1},
+    size::Vector{Int},
 )
     network = OffsetVector([NetworkNode(Vector{Successor}()) for i in 1:length(points)], -1)
     push!(points, Point(Coordinate(0,0), 0, nothing, O))
@@ -171,7 +173,7 @@ function createNetwork(
     end
     F = Point(Coordinate(size[1],size[2]), nothing, length(points) + 1, F)
     # create network
-    zeroPointNumber = 0
+    ONumber = 0
     for point in points
         #pole do debugowania
         (_, currentToken) = insert!(S, point.obstacleNumber) # dziwne
@@ -185,9 +187,9 @@ function createNetwork(
             push!(network[startingObstacle].Successors, Successor(obstacle.NW.pointNumber, distance(point, obstacle.NW), point.pointNumber))
         end
         if point.type == SE || point.type == O
-            zeroPointNumber = point.pointNumber
+            ONumber = point.pointNumber
             S = delete!(S, point.obstacle)
         end
     end
-    return network, points, zeroPointNumber
+    return network, points, ONumber
 end
