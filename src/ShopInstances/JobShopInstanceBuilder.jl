@@ -1,9 +1,9 @@
 struct JobShopInstanceBuilder
     n::Int64
     m::Int64
-    n_i::Array{Int64,1}
-    p::Array{Union{Int64, Nothing},2}
-    μ::Array{Union{Int64, Nothing},2}
+    n_i::Vector{Int}
+    p::Vector{Vector{Int}}
+    μ::Vector{Vector{Int}}
 
     function (n::Int64, m::Int64)
         @assert n >= 1 "n must be greater than or equal to 1"
@@ -30,4 +30,4 @@ function set_p!(builder::JobShopInstanceBuilder, i::Int64, j::Int64, p::Int64)
     return builder
 end
 
-function set_μ!
+# function set_μ!
