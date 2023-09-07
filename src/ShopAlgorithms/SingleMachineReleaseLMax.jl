@@ -89,13 +89,13 @@ function SingleMachineReleaseLMaxPmtn(
     while !isempty(deadlineQueue)
         _, dJob = first(deadlineQueue)
         dequeue!(deadlineQueue)
-        t = max(t, rJob.r)
+        t = max(t, dJob.r)
         jobPreempted = false
 
         if !isempty(releaseQueue)
             _, rJob = first(releaseQueue)
             dequeue!(releaseQueue)
-            while rJob.r <= t + djob.p
+            while rJob.r <= t + dJob.p
                 if rJob.d < dJob.d
                     dJob.p -= rJob.r - t
                     enqueue!(deadlineQueue, dJob.d=>dJob)
