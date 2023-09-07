@@ -4,13 +4,14 @@ struct JobShopInstance <: AbstractShop
     n_i::Vector{Int}
     p::Vector{Vector{Int}}
     μ::Vector{Vector{Int}}
-    d
+    d::Vector{Int}
     function (
         n::Int64,
         m::Int64,
         n_i::Vector{Int},
         p::Vector{Vector{Int}},
-        μ::Vector{Vector{Int}}
+        μ::Vector{Vector{Int}},
+        d::Vector{Int},
     )
         
     # @assert n == size(p, 1) "n not equals to size(p, 1)"
@@ -27,6 +28,6 @@ struct JobShopInstance <: AbstractShop
 
     
 
-    new(n, m, n_i, p, μ)
+    new(n, m, n_i, p, μ, d)
     end
 end

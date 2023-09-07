@@ -168,8 +168,8 @@ function createNetwork(
     push!(points, Point(Coordinate(0,0), 0, nothing, O))
     S=SortedSet{Int}()
     sort!(points, alg = MergeSort(), by = point -> point.coordinate.y - point.coordinate.x, rev=true)
-    for index in indices(sortPoints)
-        sortPoints[index].pointNumber = index
+    for index in eachindex(points)
+        points[index].pointNumber = index
     end
     F = Point(Coordinate(size[1],size[2]), nothing, length(points) + 1, F)
     # create network

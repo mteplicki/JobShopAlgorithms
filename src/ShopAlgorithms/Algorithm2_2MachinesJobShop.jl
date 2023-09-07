@@ -45,8 +45,8 @@ function Algorithm2_2MachinesJobShop(
     return ShopSchedule(
         JobShopInstance(n, m, n_i, p, μ, d),
         JobShopObjectiveFunction(),
-        C = [A[i] for i=1:r],
-        objectiveValue = maximum(LAST)
+        [A[i] for i=1:r],
+        maximum(LAST)
     )
 end
 
