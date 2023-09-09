@@ -102,21 +102,19 @@ function SingleMachineReleaseLMaxPmtn(
     for job in jobs
         job.r = max(job.r, startTime)
     end
-    scheduled = falses(length(jobs))
     releaseQueue = SortedMultiDict{JobData, Nothing}(ReleaseOrdering())
-    deadlineQueue = SortedMultiDict{JobData, Nothing}(DeadlineOrdering())
     for (i, job) in enumerate(jobs)
         push!(releaseQueue, job=>nothing)
-        push!(deadlineQueue, job=>nothing)
     end
     t = startTime
     while !isempty(releaseQueue)
-        firstItem = searchsortedfirst(releaseQueue,JobData(0,0,0,0,0))
-        lastItem = searchsortedlast(releaseQueue,JobData(0,t,0,0,0))
         jobToProceed = nothing
         minD = typemax(Int64)
         token = nothing
-        for (st, job, _) in semitokens(inclusive(releaseQueue, firstItem, lastItem))
+        for (st, job, _) in semitokens(releaseQueue)
+            if job.r > t
+                break
+            end
             if job.d < minD
                 minD = job.d
                 jobToProceed = job
@@ -128,19 +126,13 @@ function SingleMachineReleaseLMaxPmtn(
             jobToProceed = deref_key((releaseQueue,token))
         end
         delete!((releaseQueue, token))
-        first, last = searchequalrange(deadlineQueue, jobToProceed)
-        for (st, job, _) in semitokens(inclusive(deadlineQueue, first, last))
-            if job == jobToProceed
-                delete!((deadlineQueue, st))
-            end
-        end
         t = max(t, jobToProceed.r)
         jobPreempted = false
-        for (pmtnJob, _) in deadlineQueue
-            if pmtnJob.d >= jobToProceed.d
+        for (pmtnJob, _) in releaseQueue
+            if pmtnJob.r >= t + jobToProceed.p
                 break
             end
-            if pmtnJob.r <= t + jobToProceed.p
+            if pmtnJob.d < jobToProceed.d
                 jobToProceed.p -= (pmtnJob.r - t)
                 push!(releaseQueue, jobToProceed=>nothing)
                 t = pmtnJob.r
@@ -152,8 +144,6 @@ function SingleMachineReleaseLMaxPmtn(
             t += jobToProceed.p
             jobToProceed.C = t
         end
-
-        
     end
     jobs
     return max(maximum([job.C - job.d for job in jobsOrdered]; init = 0),maximum([job.C - job.d for job in jobs]; init = 0))
