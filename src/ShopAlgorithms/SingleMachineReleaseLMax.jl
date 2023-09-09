@@ -90,6 +90,9 @@ function SingleMachineReleaseLMax(
     return minNode.lowerBound
 end
 
+dequeuesafe!(queue::PriorityQueue{K, V}) where {K,V} = isempty(queue) ? nothing : dequeue!(queue)
+firstsafe(queue::PriorityQueue{K, V}) where {K,V} = isempty(queue) ? nothing : first(first(queue))
+
 """
 1|R_j,pmtn|Lmax\\
 preemptive EDD
@@ -102,43 +105,35 @@ function SingleMachineReleaseLMaxPmtn(
     for job in jobs
         job.r = max(job.r, startTime)
     end
-    releaseQueue = SortedMultiDict{JobData, Nothing}(ReleaseOrdering())
+    releaseQueue = PriorityQueue{JobData, Int}()
+    deadlineQueue = PriorityQueue{JobData, Int}()
     for (i, job) in enumerate(jobs)
-        push!(releaseQueue, job=>nothing)
+        enqueue!(releaseQueue, job=>job.r)
     end
     t = startTime
-    while !isempty(releaseQueue)
-        jobToProceed = nothing
-        minD = typemax(Int64)
-        token = nothing
-        for (st, job, _) in semitokens(releaseQueue)
-            if job.r > t
-                break
-            end
-            if job.d < minD
-                minD = job.d
-                jobToProceed = job
-                token = st
-            end
-        end
-        if jobToProceed === nothing
-            token = startof(releaseQueue)
-            jobToProceed = deref_key((releaseQueue,token))
-        end
-        delete!((releaseQueue, token))
-        t = max(t, jobToProceed.r)
+    firstJob = dequeuesafe!(releaseQueue)
+    if firstJob === nothing
+        return max(maximum([job.C - job.d for job in jobsOrdered]; init = 0),maximum([job.C - job.d for job in jobs]; init = 0))
+    end
+    enqueue!(deadlineQueue, firstJob=>firstJob.d)
+    while !isempty(deadlineQueue)
+        jobToProceed = dequeue!(deadlineQueue)
         jobPreempted = false
-        for (pmtnJob, _) in releaseQueue
-            if pmtnJob.r >= t + jobToProceed.p
-                break
-            end
-            if pmtnJob.d < jobToProceed.d
-                jobToProceed.p -= (pmtnJob.r - t)
-                push!(releaseQueue, jobToProceed=>nothing)
-                t = pmtnJob.r
+        time = max(t, jobToProceed.r)
+        pmtnJob = firstsafe(releaseQueue)
+        while !jobPreempted && pmtnJob !== nothing && pmtnJob.r < time + jobToProceed.p
+            pmtnJob = dequeue!(releaseQueue)
+            if pmtnJob.d <= jobToProceed.d
                 jobPreempted = true
-                break
+                jobToProceed.p -= pmtnJob.r - time
+                t = pmtnJob.r
+                enqueue!(deadlineQueue, jobToProceed=>jobToProceed.d)
+                enqueue!(deadlineQueue, pmtnJob=>pmtnJob.d)
+            else
+                enqueue!(deadlineQueue, pmtnJob=>pmtnJob.d)
+                pmtnJob = firstsafe(releaseQueue)
             end
+
         end
         if !jobPreempted
             t += jobToProceed.p
@@ -153,4 +148,4 @@ function test()
     result = SingleMachineReleaseLMax([4,2,6,5],[0,1,3,5],[8,12,11,10])
 end
 
-test()
+# test()
