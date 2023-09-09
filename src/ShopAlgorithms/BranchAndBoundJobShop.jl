@@ -55,13 +55,20 @@ function generateActiveSchedules(
         Dict{Tuple{Int64,Int64}, Bool}()
         )
 
-    r = DAGpaths(node.graph, 1, :shortest)
-    d = DAGpaths(node.graph, 1, :shortest)
-    node.lowerBound = typemax(Int64)
+    r = DAGpaths(node.graph, 1, :longest)
+    node.lowerBound = r[sum(n_i)+2]
     for machineNumber in 1:m
         newP = [p[jobToGraphNode[job[1]][job[2]]] for job in machineJobs[machineNumber]]
+        # newD = [d[jobToGraphNode[job[1]][job[2]]] for job in machineJobs[machineNumber]]
+        newD = []
         newR = [r[jobToGraphNode[job[1]][job[2]]] for job in machineJobs[machineNumber]]
-        newD = [d[jobToGraphNode[job[1]][job[2]]] for job in machineJobs[machineNumber]]
+        for job in machineJobs[machineNumber]
+            d = DAGpaths(node.graph, jobToGraphNode[job[1]][job[2]], :longest)
+            push!(newD, d[sum(n_i)+2] - node.lowerBound - p[job[1]][job[2]])
+        end
+        
+        
+        
         node.lowerBound = min(node.lowerBound, SingleMachineReleaseLMax(newP,newR,newD))
     end
 
@@ -112,7 +119,14 @@ function generateActiveSchedules(
     
 end
 
-
+function test()
+    n = 3
+    m = 4
+    n_i = [3,4,3]
+    p = [[10,8,4],[8,3,5,6],[4,7,3]]
+    μ = [[1,2,3],[2,1,4,3],[1,2,4]]
+    generateActiveSchedules(n,m,n_i,p,μ)
+end
 
 
 
