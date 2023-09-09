@@ -1,19 +1,38 @@
 using DataStructures
 
-struct SingleMachineReleaseLMaxNode
-    jobs::Vector{Int64}
-    jobsOrdered::Vector{Int64}
-    lowerBound::Union{Int64, Nothing}
-end
+
 
 mutable struct JobData
     p::Int64
     r::Int64
     d::Int64
+    index::Int64
     C::Union{Int64, Nothing}
 end
 
-lightCopy(job::JobData)::JobData = JobData(job.p, job.r, job.d, nothing)
+
+import Base.Order.lt
+import Base.==
+
+struct DeadlineOrdering <: Base.Order.Ordering
+end
+
+struct ReleaseOrdering <: Base.Order.Ordering
+end
+
+lt(::DeadlineOrdering, x::JobData, y::JobData) = x.d < y.d
+lt(::ReleaseOrdering, x::JobData, y::JobData) = x.r < y.r
+
+==(::DeadlineOrdering, x::JobData, y::JobData) = x.index == y.index
+
+mutable struct SingleMachineReleaseLMaxNode
+    jobs::Vector{Int64}
+    jobsOrdered::Vector{JobData}
+    lowerBound::Union{Int64, Nothing}
+    time::Union{Int64, Nothing}
+end
+
+lightCopy(job::JobData)::JobData = JobData(job.p, job.r, job.d, job.index, nothing)
 
 """
 1|R_j|Lmax
@@ -26,17 +45,17 @@ function SingleMachineReleaseLMax(
     upperBound = typemax(Int64)
     minNode::Union{SingleMachineReleaseLMaxNode, Nothing} = nothing
     stack = Stack{SingleMachineReleaseLMaxNode}()
-    node = SingleMachineReleaseLMaxNode([JobData(p[i], r[i], d[i], nothing) for i in 1:length(p)],[], 0)
+    node = SingleMachineReleaseLMaxNode([i for i in 1:length(p)],[], 0,0)
     
-    node.lowerBound = SingleMachineReleaseLMaxPmtn(map(lightCopy, node.jobs), map(lightCopy, node.jobsOrdered), 0)
+    node.lowerBound = SingleMachineReleaseLMaxPmtn([JobData(p[i], r[i], d[i], i, nothing) for i in node.jobs], node.jobsOrdered, node.time)
     lowerBound = node.lowerBound
     push!(stack, node)
     while !isempty(stack)
         node = pop!(stack)
-        if length(node.jobs) == 1
-            node.jobsOrdered = [node.jobsOrdered; node.jobs]
-            node.jobs = []
-            node.lowerBound = SingleMachineReleaseLMaxPmtn(map(lightCopy, node.jobs), map(lightCopy, node.jobsOrdered), 0)
+        if length(node.jobs) == 0
+            # node.jobsOrdered = [node.jobsOrdered; node.jobs]
+            # node.jobs = []
+            # node.lowerBound = SingleMachineReleaseLMaxPmtn([JobData(p[i], r[i], d[i], nothing) for i in node.jobs], [JobData(p[i], r[i], d[i], nothing) for i in node.jobsOrdered], 0)
             if node.lowerBound == upperBound
                 minNode = node
                 break
@@ -45,15 +64,19 @@ function SingleMachineReleaseLMax(
                 upperBound = node.lowerBound
                 minNode = node
             end
-        else
+        elseif node.lowerBound < upperBound
             listToPush = []
-            for i in 1:length(node.jobs)
+            for i in node.jobs
                 nodeCopy = SingleMachineReleaseLMaxNode(
-                    [node.jobs[j] for j in 1:length(node.jobs) if j != i],
-                    [node.jobsOrdered; node.jobs[i]],
-                    nothing
+                    [j for j in node.jobs if j != i],
+                    [node.jobsOrdered; JobData(p[i], r[i], d[i], i, max(r[i], node.time) + p[i])],
+                    nothing,
+                    max(r[i], node.time) + p[i]
                 )
-                nodeCopy.lowerBound = SingleMachineReleaseLMaxPmtn(map(lightCopy, nodeCopy.jobs), map(lightCopy, nodeCopy.jobsOrdered), 0)
+                if r[i] >= minimum([max(r[j], node.time) + p[j] for j in nodeCopy.jobs]; init = typemax(Int64))
+                    continue
+                end
+                nodeCopy.lowerBound = SingleMachineReleaseLMaxPmtn([JobData(p[i], r[i], d[i], i, nothing) for i in nodeCopy.jobs], nodeCopy.jobsOrdered, nodeCopy.time)
                 if nodeCopy.lowerBound < upperBound
                     push!(listToPush, nodeCopy)
                 end
@@ -73,43 +96,71 @@ preemptive EDD
 """
 function SingleMachineReleaseLMaxPmtn(
     jobs::Vector{JobData},
-    jobsOrdered::Vector{Int64},
+    jobsOrdered::Vector{JobData},
     startTime::Int64
 )::Int
     for job in jobs
         job.r = max(job.r, startTime)
     end
-    releaseQueue = PriorityQueue{Int64, JobData}()
-    deadlineQueue = PriorityQueue{Int64, JobData}()
+    scheduled = falses(length(jobs))
+    releaseQueue = SortedMultiDict{JobData, Nothing}(ReleaseOrdering())
+    deadlineQueue = SortedMultiDict{JobData, Nothing}(DeadlineOrdering())
     for (i, job) in enumerate(jobs)
-        enqueue!(releaseQueue, job.r=>job)
-        enqueue!(deadlineQueue, job.d=>job)
+        push!(releaseQueue, job=>nothing)
+        push!(deadlineQueue, job=>nothing)
     end
-    t = 0
-    while !isempty(deadlineQueue)
-        _, dJob = first(deadlineQueue)
-        dequeue!(deadlineQueue)
-        t = max(t, dJob.r)
-        jobPreempted = false
-
-        if !isempty(releaseQueue)
-            _, rJob = first(releaseQueue)
-            dequeue!(releaseQueue)
-            while rJob.r <= t + dJob.p
-                if rJob.d < dJob.d
-                    dJob.p -= rJob.r - t
-                    enqueue!(deadlineQueue, dJob.d=>dJob)
-                    t = rJob.r
-                    jobPreempted = true
-                    break
-                end
+    t = startTime
+    while !isempty(releaseQueue)
+        firstItem = searchsortedfirst(releaseQueue,JobData(0,0,0,0,0))
+        lastItem = searchsortedlast(releaseQueue,JobData(0,t,0,0,0))
+        jobToProceed = nothing
+        minD = typemax(Int64)
+        token = nothing
+        for (st, job, _) in semitokens(inclusive(releaseQueue, firstItem, lastItem))
+            if job.d < minD
+                minD = job.d
+                jobToProceed = job
+                token = st
             end
         end
-
-        if !jobPreempted
-            t += dJob.p
-            dJob.C = t
+        if jobToProceed === nothing
+            token = startof(releaseQueue)
+            jobToProceed = deref_key((releaseQueue,token))
         end
+        delete!((releaseQueue, token))
+        first, last = searchequalrange(deadlineQueue, jobToProceed)
+        for (st, job, _) in semitokens(inclusive(deadlineQueue, first, last))
+            if job == jobToProceed
+                delete!((deadlineQueue, st))
+            end
+        end
+        t = max(t, jobToProceed.r)
+        jobPreempted = false
+        for (pmtnJob, _) in deadlineQueue
+            if pmtnJob.d >= jobToProceed.d
+                break
+            end
+            if pmtnJob.r <= t + jobToProceed.p
+                jobToProceed.p -= (pmtnJob.r - t)
+                push!(releaseQueue, jobToProceed=>nothing)
+                t = pmtnJob.r
+                jobPreempted = true
+                break
+            end
+        end
+        if !jobPreempted
+            t += jobToProceed.p
+            jobToProceed.C = t
+        end
+
+        
     end
-    return max(maximum([job.C - job.d for job in jobsOrdered]),maximum([job.C - job.d for job in jobs]))
+    jobs
+    return max(maximum([job.C - job.d for job in jobsOrdered]; init = 0),maximum([job.C - job.d for job in jobs]; init = 0))
 end
+
+function test()
+    result = SingleMachineReleaseLMax([4,2,6,5],[0,1,3,5],[8,12,11,10])
+end
+
+test()

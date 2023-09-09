@@ -12,6 +12,7 @@ mutable struct ActiveScheduleNode
     Ω::Vector{Operation}
     lowerBound::Union{Int64, Nothing}
     graph::SimpleGraph
+    scheduled::Dict{Tuple{Int64,Int64}, Bool}
 end
 
 function generateActiveSchedules(
@@ -24,7 +25,7 @@ function generateActiveSchedules(
     jobToGraphNode = [[0 for _ in 1:n_i[i]] for i in 1:n]
     graphNodeToJob = [(0,0) for _ in 1:sum(n_i)]
     machineJobs = [[] for _ in 1:m]
-    scheduled = Dict{Tuple{Int64,Int64}, Bool}()
+    
     counter = 0
     for i in 1:n
         for j in 1:n_i[i]
@@ -50,7 +51,8 @@ function generateActiveSchedules(
     node = ActiveScheduleNode(
         [(i,1) for i=1:n], 
         nothing,
-        graph
+        graph,
+        Dict{Tuple{Int64,Int64}, Bool}()
         )
 
     r = DAGpaths(node.graph, 1, :shortest)
@@ -78,23 +80,27 @@ function generateActiveSchedules(
             newNode = ActiveScheduleNode(
                 filter(a->a != selectedOperation, node.Ω),
                 nothing,
-                deepcopy(node.graph)
+                deepcopy(node.graph),
+                deepcopy(node.scheduled)
             )
+            node.scheduled[selectedOperation] = true
         
-            for operation in machineJobs
-                if !(operation in scheduled)
+            for operation in machineJobs[μ[selectedOperation[1]][selectedOperation[2]]]
+                if !(operation in node.scheduled)
                     add_edge!(newNode.graph, jobToGraphNode[selectedOperation[1]][selectedOperation[2]], jobToGraphNode[operation[1]][operation[2]], p[selectedOperation[1]][selectedOperation[2]])
                 end
             end
-            r = DAGpaths(node.graph, 1, :shortest)
-            d = DAGpaths(node.graph, 1, :shortest)
-            newNode.lowerBound = typemax(Int64)
+            
+            newNode.lowerBound = node.lowerBound
             for machineNumber in 1:m
+                r = DAGpaths(node.graph, 1, :longest)
+                d = DAGpaths(node.graph, 1, :shortest)
                 newP = [p[jobToGraphNode[job[1]][job[2]]] for job in machineJobs[machineNumber]]
                 newR = [r[jobToGraphNode[job[1]][job[2]]] for job in machineJobs[machineNumber]]
                 newD = [d[jobToGraphNode[job[1]][job[2]]] for job in machineJobs[machineNumber]]
-                newNode.lowerBound = min(newNode.lowerBound, SingleMachineReleaseLMax(newP,newR,newD))
+                newNode.lowerBound = max(newNode.lowerBound, SingleMachineReleaseLMax(newP,newR,newD) + node.lowerBound)
             end
+            
         end
         sort!(listOfNodes, by = x->-x.lowerBound)
         for nodeToPush in listOfNodes
