@@ -1,7 +1,3 @@
-using DataStructures
-
-
-
 mutable struct JobData
     p::Int64
     r::Int64
@@ -9,21 +5,6 @@ mutable struct JobData
     index::Int64
     C::Union{Int64, Nothing}
 end
-
-
-import Base.Order.lt
-import Base.==
-
-struct DeadlineOrdering <: Base.Order.Ordering
-end
-
-struct ReleaseOrdering <: Base.Order.Ordering
-end
-
-lt(::DeadlineOrdering, x::JobData, y::JobData) = x.d < y.d
-lt(::ReleaseOrdering, x::JobData, y::JobData) = x.r < y.r
-
-==(::DeadlineOrdering, x::JobData, y::JobData) = x.index == y.index
 
 mutable struct SingleMachineReleaseLMaxNode
     jobs::Vector{Int64}
@@ -53,9 +34,6 @@ function SingleMachineReleaseLMax(
     while !isempty(stack)
         node = pop!(stack)
         if length(node.jobs) == 0
-            # node.jobsOrdered = [node.jobsOrdered; node.jobs]
-            # node.jobs = []
-            # node.lowerBound = SingleMachineReleaseLMaxPmtn([JobData(p[i], r[i], d[i], nothing) for i in node.jobs], [JobData(p[i], r[i], d[i], nothing) for i in node.jobsOrdered], 0)
             if node.lowerBound == upperBound
                 minNode = node
                 break
@@ -87,6 +65,7 @@ function SingleMachineReleaseLMax(
             end
         end
     end
+    minNode
     return minNode.lowerBound
 end
 

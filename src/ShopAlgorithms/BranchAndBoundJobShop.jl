@@ -1,17 +1,7 @@
-using DataStructures
-using Graphs, SimpleWeightedGraphs
-
-mutable struct Operation
-    i::Int64
-    j::Int64
-    p::Int64
-    r::Int64
-end
-
 mutable struct ActiveScheduleNode
-    Ω::Vector{Operation}
+    Ω::Vector{Tuple{Int,Int}}
     lowerBound::Union{Int64, Nothing}
-    graph::SimpleGraph
+    graph::AbstractGraph
     scheduled::Dict{Tuple{Int64,Int64}, Bool}
 end
 
@@ -22,11 +12,12 @@ function generateActiveSchedules(
     p::Vector{Vector{Int}},
     μ::Vector{Vector{Int}}
 )
-    jobToGraphNode = [[0 for _ in 1:n_i[i]] for i in 1:n]
-    graphNodeToJob = [(0,0) for _ in 1:sum(n_i)]
-    machineJobs = [[] for _ in 1:m]
+    jobToGraphNode::Vector{Vector{Int}} = [[0 for _ in 1:n_i[i]] for i in 1:n]
+    graphNodeToJob::Vector{Tuple{Int,Int}} = [(0,0) for _ in 1:(sum(n_i) + 2)]
+    machineJobs::Vector{Vector{Tuple{Int,Int}}} = [[] for _ in 1:m]
+    r = [[0 for _ in 1:a] for a in n_i]
     
-    counter = 0
+    counter = 2
     for i in 1:n
         for j in 1:n_i[i]
             jobToGraphNode[i][j] = counter
@@ -55,20 +46,24 @@ function generateActiveSchedules(
         Dict{Tuple{Int64,Int64}, Bool}()
         )
 
-    r = DAGpaths(node.graph, 1, :longest)
-    node.lowerBound = r[sum(n_i)+2]
+    rGraph = DAGpaths(node.graph, 1, :longest)
+    node.lowerBound = rGraph[sum(n_i)+2]
+    for (index, value) in enumerate(rGraph)
+        if index == 1 || index == sum(n_i)+2 
+            continue
+        end
+        i, j = graphNodeToJob[index]
+        r[i][j] = value
+    end
+
     for machineNumber in 1:m
-        newP = [p[jobToGraphNode[job[1]][job[2]]] for job in machineJobs[machineNumber]]
-        # newD = [d[jobToGraphNode[job[1]][job[2]]] for job in machineJobs[machineNumber]]
-        newD = []
-        newR = [r[jobToGraphNode[job[1]][job[2]]] for job in machineJobs[machineNumber]]
+        newP = [p[job[1]][job[2]] for job in machineJobs[machineNumber]]
+        newD::Vector{Int} = []
+        newR = [r[job[1]][job[2]] for job in machineJobs[machineNumber]]
         for job in machineJobs[machineNumber]
             d = DAGpaths(node.graph, jobToGraphNode[job[1]][job[2]], :longest)
             push!(newD, d[sum(n_i)+2] - node.lowerBound - p[job[1]][job[2]])
         end
-        
-        
-        
         node.lowerBound = min(node.lowerBound, SingleMachineReleaseLMax(newP,newR,newD))
     end
 
@@ -79,9 +74,9 @@ function generateActiveSchedules(
     while !isempty(S)
         node = pop!(S)
 
-        minimum, index = findmin(a->a.p + a.r, node.Ω)
-        i_star = node.Ω[index].i
-        Ω_prim = filter(a->(a.r < minimum && a.i == i_star), node.Ω)
+        minimum, index = findmin(a-> p[a[1]][a[2]] + r[a[1]][a[2]], node.Ω)
+        i_star = node.Ω[index][2]
+        Ω_prim = filter(a->(r[a[1]][a[2]] < minimum && μ[a[1]][a[2]] == i_star), node.Ω)
         listOfNodes = []
         for selectedOperation in Ω_prim
             newNode = ActiveScheduleNode(
@@ -90,26 +85,41 @@ function generateActiveSchedules(
                 deepcopy(node.graph),
                 deepcopy(node.scheduled)
             )
-            node.scheduled[selectedOperation] = true
+            newNode.scheduled[selectedOperation] = true
+            push!(newNode.Ω, (selectedOperation[1], selectedOperation[2] + 1))
         
             for operation in machineJobs[μ[selectedOperation[1]][selectedOperation[2]]]
-                if !(operation in node.scheduled)
+                if !(get!(newNode.scheduled, operation, false))
                     add_edge!(newNode.graph, jobToGraphNode[selectedOperation[1]][selectedOperation[2]], jobToGraphNode[operation[1]][operation[2]], p[selectedOperation[1]][selectedOperation[2]])
                 end
             end
             
-            newNode.lowerBound = node.lowerBound
-            for machineNumber in 1:m
-                r = DAGpaths(node.graph, 1, :longest)
-                d = DAGpaths(node.graph, 1, :shortest)
-                newP = [p[jobToGraphNode[job[1]][job[2]]] for job in machineJobs[machineNumber]]
-                newR = [r[jobToGraphNode[job[1]][job[2]]] for job in machineJobs[machineNumber]]
-                newD = [d[jobToGraphNode[job[1]][job[2]]] for job in machineJobs[machineNumber]]
-                newNode.lowerBound = max(newNode.lowerBound, SingleMachineReleaseLMax(newP,newR,newD) + node.lowerBound)
+            rGraph = DAGpaths(newNode.graph, 1, :longest)
+            newNode.lowerBound = rGraph[sum(n_i)+2]
+            for (index, value) in enumerate(rGraph)
+                if index == 1 || index == sum(n_i)+2 
+                    continue
+                end
+                i, j = graphNodeToJob[index]
+                r[i][j] = value
             end
+        
+            for machineNumber in 1:m
+                newP = [p[job[1]][job[2]] for job in machineJobs[machineNumber]]
+                newD::Vector{Int} = []
+                newR = [r[job[1]][job[2]] for job in machineJobs[machineNumber]]
+                for job in machineJobs[machineNumber]
+                    d = DAGpaths(newNode.graph, jobToGraphNode[job[1]][job[2]], :longest)
+                    push!(newD, newNode.lowerBound + p[job[1]][job[2]] - d[sum(n_i) + 2])
+                end
+                lowerBoundCandidate = newNode.lowerBound + SingleMachineReleaseLMax(newP,newR,newD)
+                newNode.lowerBound = min(newNode.lowerBound, lowerBoundCandidate)
+            end
+            push!(listOfNodes, newNode)
             
         end
         sort!(listOfNodes, by = x->-x.lowerBound)
+        filter!(x-> x.lowerBound <= upperBound, listOfNodes)
         for nodeToPush in listOfNodes
             push!(S, nodeToPush)
         end
@@ -117,15 +127,6 @@ function generateActiveSchedules(
 
     
     
-end
-
-function test()
-    n = 3
-    m = 4
-    n_i = [3,4,3]
-    p = [[10,8,4],[8,3,5,6],[4,7,3]]
-    μ = [[1,2,3],[2,1,4,3],[1,2,4]]
-    generateActiveSchedules(n,m,n_i,p,μ)
 end
 
 
