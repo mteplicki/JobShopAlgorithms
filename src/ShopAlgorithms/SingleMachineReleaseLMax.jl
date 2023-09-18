@@ -66,7 +66,7 @@ function SingleMachineReleaseLMax(
         end
     end
     minNode
-    return minNode.lowerBound
+    return minNode.lowerBound, minNode.jobsOrdered
 end
 
 dequeuesafe!(queue::PriorityQueue{K, V}) where {K,V} = isempty(queue) ? nothing : dequeue!(queue)
@@ -118,13 +118,22 @@ function SingleMachineReleaseLMaxPmtn(
             t += jobToProceed.p
             jobToProceed.C = t
         end
+        if isempty(deadlineQueue) && !isempty(releaseQueue)
+            jobAfterProceeded = dequeue!(releaseQueue)
+            enqueue!(deadlineQueue, jobAfterProceeded=>jobAfterProceeded.d)
+            while firstsafe(releaseQueue) !== nothing && firstsafe(releaseQueue).r == jobAfterProceeded.r
+                jobToAdd = dequeue!(releaseQueue)
+                enqueue!(deadlineQueue, jobToAdd=>jobToAdd.d)
+            end
+        end
     end
     jobs
-    return max(maximum([job.C - job.d for job in jobsOrdered]; init = 0),maximum([job.C - job.d for job in jobs]; init = 0))
+    return max(maximum([job.C - job.d for job in jobsOrdered]; init = typemin(Int)),maximum([job.C - job.d for job in jobs]; init = typemin(Int)))
 end
 
 function test()
-    result = SingleMachineReleaseLMax([4,2,6,5],[0,1,3,5],[8,12,11,10])
+    result = SingleMachineReleaseLMax([10,3,4],[0,10,10],[14,17,18])
+    println(result)
 end
 
 # test()
