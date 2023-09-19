@@ -21,8 +21,12 @@ lightCopy(job::JobData)::JobData = JobData(job.p, job.r, job.d, job.index, nothi
 function SingleMachineReleaseLMax(
     p::Vector{Int64},
     r::Vector{Int64},
-    d::Vector{Int64}
+    d::Vector{Int64},
+    indices::Union{Vector{Int64}, Nothing} = nothing
 )
+    if indices === nothing
+        indices = [i for i in 1:length(p)]
+    end
     upperBound = typemax(Int64)
     minNode::Union{SingleMachineReleaseLMaxNode, Nothing} = nothing
     stack = Stack{SingleMachineReleaseLMaxNode}()
@@ -66,7 +70,7 @@ function SingleMachineReleaseLMax(
         end
     end
     minNode
-    return minNode.lowerBound, minNode.jobsOrdered
+    return minNode.lowerBound, map(x->indices[x.index], minNode.jobsOrdered)
 end
 
 dequeuesafe!(queue::PriorityQueue{K, V}) where {K,V} = isempty(queue) ? nothing : dequeue!(queue)

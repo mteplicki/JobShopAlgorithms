@@ -8,7 +8,8 @@ function shiftingBottleneck(
     jobToGraphNode::Vector{Vector{Int}} = [[0 for _ in 1:n_i[i]] for i in 1:n]
     graphNodeToJob::Vector{Tuple{Int,Int}} = [(0,0) for _ in 1:(sum(n_i) + 2)]
     machineJobs::Vector{Vector{Tuple{Int,Int}}} = [[] for _ in 1:m]
-    machineWithJobs::Vector{Vector{Int}} = [[(0,0) for _ in 1:n_i[i]] for i in 1:n]
+    machineWithJobs::Vector{Vector{Tuple{Int,Int}}} = [[(0,0) for _ in 1:n] for _ in 1:m]
+    machineFixedEdges::Vector{Vector{Tuple{Int,Int}}} = [[] for _ in 1:m]
 
     counter = 2
     for i in 1:n
@@ -17,7 +18,7 @@ function shiftingBottleneck(
             graphNodeToJob[counter] = (i,j)
             push!(machineJobs[μ[i][j]], (i,j))
             counter += 1
-            machineWithJobs[μ[i][j]][j] = (i,j)
+            machineWithJobs[μ[i][j]][i] = (i,j)
         end
     end
 
@@ -29,36 +30,19 @@ function shiftingBottleneck(
         end
         add_edge!(graph, jobToGraphNode[i][n_i[i]], sum(n_i)+2, p[i][n_i[i]])
     end
-    rGraph = DAGpaths(graph, 1, :longest)
-    r = [[0 for _ in 1:a] for a in n_i]
-    for (index, value) in enumerate(rGraph)
-        if index == 1 || index == sum(n_i)+2 
-            continue
-        end
-        i, j = graphNodeToJob[index]
-        r[i][j] = value 
-    end 
 
-
+    r, rGraph = generateReleaseTimes(graph, n_i, graphNodeToJob)
     M_0 = Set{Int}() 
     M = Set{Int}([i for i in 1:m])
-    Cmax = rGraph[sum(n_i)+2]
-    Lmax = typemin(Int64)
-    k::Union{Int,Nothing} = nothing
-    sequence::Union{Vector,Nothing} = nothing
+    Cmax = rGraph[sum(n_i)+2]   
+    
     while M_0 ≠ M
-
+        Lmax = typemin(Int64)
+        k::Union{Int,Nothing} = nothing
+        sequence::Union{Vector{Int},Nothing} = nothing
         for i in setdiff(M, M_0)
-            newP = [p[job[1]][job[2]] for job in machineJobs[i]]
-            newD::Vector{Int} = []
-            newR = [r[job[1]][job[2]] for job in machineJobs[i]]
-            for job in machineJobs[i]
-                d = DAGpaths(graph, jobToGraphNode[job[1]][job[2]], :longest)
-                push!(newD, Cmax + p[job[1]][job[2]] - d[sum(n_i) + 2])
-            end
-
-            LmaxCandidate, sequenceCandidate = SingleMachineReleaseLMax(newP,newR,newD)
-            if LmaxCandidate > Lmax
+            LmaxCandidate, sequenceCandidate = generateSequence(p, r, n_i, machineJobs, jobToGraphNode, graph, Cmax, i)
+            if LmaxCandidate >= Lmax
                 Lmax = LmaxCandidate
                 sequence = sequenceCandidate
                 k = i
@@ -66,11 +50,27 @@ function shiftingBottleneck(
         end
         M_0 = M_0 ∪ k
         Cmax += Lmax
-        for (job1, job2) in Iterators.zip(sequence, Iterators.drop(sequence, 1))
-            add_edge!(Graph, jobToGraphNode
+        fixDisjunctiveEdges(sequence, machineWithJobs, jobToGraphNode, graph, p, k, machineFixedEdges)
+        for fixMachine in setdiff(M_0, Set([k]))
+            backUpGraph = deepcopy(graph)
+            for (job1, job2) in machineFixedEdges[fixMachine]
+                rem_edge!(graph, job1, job2)
+            end
+            
+            r, rGraph = generateReleaseTimes(graph, n_i, graphNodeToJob)
+            longestPath = rGraph[sum(n_i)+2]
+            LmaxCandidate, sequenceCandidate = generateSequence(p, r, n_i, machineJobs, jobToGraphNode, graph, Cmax, fixMachine)
+            if LmaxCandidate + longestPath >= Cmax
+                graph = backUpGraph
+            else
+                empty!(machineFixedEdges[fixMachine])
+                Cmax = LmaxCandidate + longestPath
+                fixDisjunctiveEdges(sequenceCandidate, machineWithJobs, jobToGraphNode, graph, p, fixMachine, machineFixedEdges)
+            end
         end
+        r, rGraph = generateReleaseTimes(graph, n_i, graphNodeToJob)
     end
-
-
-
+    Cmax = rGraph[sum(n_i)+2]
+    return (r, Cmax)
 end
+

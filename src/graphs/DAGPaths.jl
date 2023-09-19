@@ -1,6 +1,6 @@
 # dodaj sortowanie topologiczne
 
-function DAGpaths(graph::SimpleWeightedGraphAdj{V,U}, source::V, type::Symbol) where {V<:Integer, U<:Real}
+function DAGpaths(graph::SimpleWeightedGraphAdj{V,U}, source::V, type::Symbol) where {V<:Integer, U<:Real} 
     
     if type == :longest
         dist = fill(typemin(V), length(graph.vertices))

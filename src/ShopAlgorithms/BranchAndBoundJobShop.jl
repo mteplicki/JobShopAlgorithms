@@ -97,17 +97,9 @@ function generateActiveSchedules(
                     add_edge!(newNode.graph, jobToGraphNode[selectedOperation[1]][selectedOperation[2]], jobToGraphNode[operation[1]][operation[2]], p[selectedOperation[1]][selectedOperation[2]])
                 end
             end
-            
-            rGraph = DAGpaths(newNode.graph, 1, :longest)
+            newNode.r, rGraph = generateReleaseTimes(newNode.graph, n_i, graphNodeToJob)
             longestPathLowerBound = rGraph[sum(n_i)+2]
             newNode.lowerBound = max(newNode.lowerBound, longestPathLowerBound)
-            for (index, value) in enumerate(rGraph)
-                if index == 1 || index == sum(n_i)+2 
-                    continue
-                end
-                i, j = graphNodeToJob[index]
-                newNode.r[i][j] = value
-            end
             lowerBoundCandidate = newNode.lowerBound
             for machineNumber in 1:m
                 newP = [p[job[1]][job[2]] for job in machineJobs[machineNumber]]
@@ -121,7 +113,6 @@ function generateActiveSchedules(
             end
             newNode.lowerBound = lowerBoundCandidate
             push!(listOfNodes, newNode)
-            
         end
         sort!(listOfNodes, by = x->x.lowerBound)
         filter!(x-> x.lowerBound <= upperBound, listOfNodes)
