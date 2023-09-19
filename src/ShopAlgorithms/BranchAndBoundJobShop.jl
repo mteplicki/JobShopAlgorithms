@@ -47,18 +47,8 @@ function generateActiveSchedules(
         [[0 for _ in 1:a] for a in n_i]
         )
 
-    rGraph = DAGpaths(node.graph, 1, :longest)
+    node.r, rGraph = generateReleaseTimes(node.graph, n_i, graphNodeToJob)
     node.lowerBound = rGraph[sum(n_i)+2]
-    for (index, value) in enumerate(rGraph)
-        if index == 1 || index == sum(n_i)+2 
-            continue
-        end
-        i, j = graphNodeToJob[index]
-        node.r[i][j] = value
-    end
-    #=
-        dodaj upperBound i warunki końcowe
-    =#
     push!(S, node)
     while !isempty(S)
         node = pop!(S)
@@ -102,14 +92,8 @@ function generateActiveSchedules(
             newNode.lowerBound = max(newNode.lowerBound, longestPathLowerBound)
             lowerBoundCandidate = newNode.lowerBound
             for machineNumber in 1:m
-                newP = [p[job[1]][job[2]] for job in machineJobs[machineNumber]]
-                newD::Vector{Int} = []
-                newR = [newNode.r[job[1]][job[2]] for job in machineJobs[machineNumber]]
-                for job in machineJobs[machineNumber]
-                    d = DAGpaths(newNode.graph, jobToGraphNode[job[1]][job[2]], :longest)
-                    push!(newD, newNode.lowerBound + p[job[1]][job[2]] - d[sum(n_i) + 2])
-                end
-                lowerBoundCandidate = max(newNode.lowerBound + SingleMachineReleaseLMax(newP,newR,newD)[1], lowerBoundCandidate) # uwaga na to 0
+                LmaxCandidate, _ = generateSequence(p, newNode.r, n_i, machineJobs, jobToGraphNode, newNode.graph, newNode.lowerBound, machineNumber)
+                lowerBoundCandidate = max(newNode.lowerBound + LmaxCandidate, lowerBoundCandidate)
             end
             newNode.lowerBound = lowerBoundCandidate
             push!(listOfNodes, newNode)
