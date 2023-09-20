@@ -14,18 +14,18 @@ function shiftingBottleneck(
     μ::Vector{Vector{Int}}
 )
     # nonrepetitive
-    all(sort(collect(Set(x))) == sort(x) for x in μ) || throw(ArgumentError("μ must be nonrepetitive"))   
-    
+    all(sort(collect(Set(x))) == sort(x) for x in μ) || throw(ArgumentError("μ must be nonrepetitive"))
+
     jobToGraphNode, graphNodeToJob, machineJobs, machineWithJobs = generateUtilArrays(n, m, n_i, μ)
     machineFixedEdges::Vector{Vector{Tuple{Int,Int}}} = [[] for _ in 1:m]
 
     graph = generateConjuctiveGraph(n, n_i, p, jobToGraphNode)
 
     r, rGraph = generateReleaseTimes(graph, n_i, graphNodeToJob)
-    M_0 = Set{Int}() 
+    M_0 = Set{Int}()
     M = Set{Int}([i for i in 1:m])
-    Cmax = rGraph[sum(n_i)+2]   
-    
+    Cmax = rGraph[sum(n_i)+2]
+
     while M_0 ≠ M
         Lmax = typemin(Int64)
         k::Union{Int,Nothing} = nothing
@@ -46,7 +46,7 @@ function shiftingBottleneck(
             for (job1, job2) in machineFixedEdges[fixMachine]
                 rem_edge!(graph, job1, job2)
             end
-            
+
             r, rGraph = generateReleaseTimes(graph, n_i, graphNodeToJob)
             longestPath = rGraph[sum(n_i)+2]
             LmaxCandidate, sequenceCandidate = generateSequence(p, r, n_i, machineJobs, jobToGraphNode, graph, Cmax, fixMachine)

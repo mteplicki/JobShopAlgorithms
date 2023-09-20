@@ -1,8 +1,8 @@
 mutable struct ActiveScheduleNode
     Ω::Vector{Tuple{Int,Int}}
-    lowerBound::Union{Int64, Nothing}
+    lowerBound::Union{Int64,Nothing}
     graph::AbstractGraph
-    scheduled::Dict{Tuple{Int64,Int64}, Bool}
+    scheduled::Dict{Tuple{Int64,Int64},Bool}
     r::Vector{Vector{Int64}}
 end
 
@@ -20,17 +20,17 @@ function generateActiveSchedules(
 
     jobToGraphNode, graphNodeToJob, machineJobs, _ = generateUtilArrays(n, m, n_i, μ)
     upperBound = typemax(Int64)
-    selectedNode::Union{ActiveScheduleNode, Nothing} = nothing
+    selectedNode::Union{ActiveScheduleNode,Nothing} = nothing
     S = Stack{ActiveScheduleNode}()
     graph = generateConjuctiveGraph(n, n_i, p, jobToGraphNode)
 
     node = ActiveScheduleNode(
-        [(i,1) for i=1:n], 
+        [(i, 1) for i = 1:n],
         nothing,
         graph,
-        Dict{Tuple{Int64,Int64}, Bool}(),
+        Dict{Tuple{Int64,Int64},Bool}(),
         [[0 for _ in 1:a] for a in n_i]
-        )
+    )
 
     node.r, rGraph = generateReleaseTimes(node.graph, n_i, graphNodeToJob)
     node.lowerBound = rGraph[sum(n_i)+2]
@@ -49,7 +49,7 @@ function generateActiveSchedules(
         listOfNodes = []
         for selectedOperation in Ω_prim
             newNode = ActiveScheduleNode(
-                filter(a->a != selectedOperation, node.Ω),
+                filter(a -> a != selectedOperation, node.Ω),
                 node.lowerBound,
                 deepcopy(node.graph),
                 deepcopy(node.scheduled),
@@ -59,7 +59,7 @@ function generateActiveSchedules(
             if selectedOperation[2] < n_i[selectedOperation[1]]
                 push!(newNode.Ω, (selectedOperation[1], selectedOperation[2] + 1))
             end
-        
+
             for operation in machineJobs[μ[selectedOperation[1]][selectedOperation[2]]]
                 if !(get!(newNode.scheduled, operation, false))
                     add_edge!(newNode.graph, jobToGraphNode[selectedOperation[1]][selectedOperation[2]], jobToGraphNode[operation[1]][operation[2]], p[selectedOperation[1]][selectedOperation[2]])
@@ -76,12 +76,12 @@ function generateActiveSchedules(
             newNode.lowerBound = lowerBoundCandidate
             push!(listOfNodes, newNode)
         end
-        sort!(listOfNodes, by = x->x.lowerBound)
-        filter!(x-> x.lowerBound ≤ upperBound, listOfNodes)
+        sort!(listOfNodes, by=x -> x.lowerBound)
+        filter!(x -> x.lowerBound ≤ upperBound, listOfNodes)
         for nodeToPush in Iterators.reverse(listOfNodes)
             push!(S, nodeToPush)
         end
-        
+
     end
     return ShopSchedule(
         JobShopInstance(n, m, n_i, p, μ),
@@ -91,10 +91,10 @@ function generateActiveSchedules(
 end
 
 function generateΩ_prim(node::ActiveScheduleNode, p::Vector{Vector{Int}}, μ::Vector{Vector{Int}})
-    minimum, index = findmin(a-> p[a[1]][a[2]] + node.r[a[1]][a[2]], node.Ω)
-    i,j = node.Ω[index]
+    minimum, index = findmin(a -> p[a[1]][a[2]] + node.r[a[1]][a[2]], node.Ω)
+    i, j = node.Ω[index]
     i_star = μ[i][j]
-    Ω_prim = filter(a->(node.r[a[1]][a[2]] < minimum && μ[a[1]][a[2]] == i_star), node.Ω)
+    Ω_prim = filter(a -> (node.r[a[1]][a[2]] < minimum && μ[a[1]][a[2]] == i_star), node.Ω)
     return Ω_prim
 end
 

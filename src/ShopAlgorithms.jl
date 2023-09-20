@@ -9,6 +9,7 @@ module ShopAlgorithms
     include("ShopInstances/ShopInstance.jl")
     include("ShopInstances/JobShopSchedule.jl")
     include("instanceLoaders/StandardLoader.jl")
+    include("randomGenerators/randomInstanceGenerator.jl")
 
     include("ShopAlgorithms/Utils.jl")
 
