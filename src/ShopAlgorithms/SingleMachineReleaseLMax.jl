@@ -37,10 +37,10 @@ function SingleMachineReleaseLMax(
     while !isempty(stack)
         node = pop!(stack)
         if length(node.jobs) == 0 
-            if node.lowerBound == upperBound
-                minNode = node
-                break
-            end
+            # if node.lowerBound == upperBound
+            #     minNode = node
+            #     break
+            # end
             if node.lowerBound < upperBound
                 upperBound = node.lowerBound
                 minNode = node
