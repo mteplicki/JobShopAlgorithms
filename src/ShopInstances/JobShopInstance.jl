@@ -28,7 +28,7 @@ struct JobShopInstance <: AbstractShop
     end
 end
 
-function Base.==(instance1::JobShopInstance, instance2::JobShopInstance) 
+function Base.:(==)(instance1::JobShopInstance, instance2::JobShopInstance) 
     return (
     instance1.n == instance2.n &&
     instance1.m == instance2.m &&
