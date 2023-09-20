@@ -16,31 +16,10 @@ function shiftingBottleneck(
     # nonrepetitive
     all(sort(collect(Set(x))) == sort(x) for x in μ) || throw(ArgumentError("μ must be nonrepetitive"))   
     
-    jobToGraphNode::Vector{Vector{Int}} = [[0 for _ in 1:n_i[i]] for i in 1:n]
-    graphNodeToJob::Vector{Tuple{Int,Int}} = [(0,0) for _ in 1:(sum(n_i) + 2)]
-    machineJobs::Vector{Vector{Tuple{Int,Int}}} = [[] for _ in 1:m]
-    machineWithJobs::Vector{Vector{Tuple{Int,Int}}} = [[(0,0) for _ in 1:n] for _ in 1:m]
+    jobToGraphNode, graphNodeToJob, machineJobs, machineWithJobs = generateUtilArrays(n, m, n_i, μ)
     machineFixedEdges::Vector{Vector{Tuple{Int,Int}}} = [[] for _ in 1:m]
 
-    counter = 2
-    for i in 1:n
-        for j in 1:n_i[i]
-            jobToGraphNode[i][j] = counter
-            graphNodeToJob[counter] = (i,j)
-            push!(machineJobs[μ[i][j]], (i,j))
-            counter += 1
-            machineWithJobs[μ[i][j]][i] = (i,j)
-        end
-    end
-
-    graph = SimpleWeightedGraphAdj(sum(n_i)+2, Int)
-    for i in 1:n
-        add_edge!(graph, 1, jobToGraphNode[i][1], 0)
-        for j in 1:(n_i[i] - 1)
-            add_edge!(graph, jobToGraphNode[i][j], jobToGraphNode[i][j+1], p[i][j])
-        end
-        add_edge!(graph, jobToGraphNode[i][n_i[i]], sum(n_i)+2, p[i][n_i[i]])
-    end
+    graph = generateConjuctiveGraph(n, n_i, p, jobToGraphNode)
 
     r, rGraph = generateReleaseTimes(graph, n_i, graphNodeToJob)
     M_0 = Set{Int}() 

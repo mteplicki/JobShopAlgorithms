@@ -17,31 +17,12 @@ function generateActiveSchedules(
 )
     # nonrepetitive
     all(sort(collect(Set(x))) == sort(x) for x in μ) || throw(ArgumentError("μ must be nonrepetitive"))
-    jobToGraphNode::Vector{Vector{Int}} = [[0 for _ in 1:n_i[i]] for i in 1:n]
-    graphNodeToJob::Vector{Tuple{Int,Int}} = [(0,0) for _ in 1:(sum(n_i) + 2)]
-    machineJobs::Vector{Vector{Tuple{Int,Int}}} = [[] for _ in 1:m]
-    
-    counter = 2
-    for i in 1:n
-        for j in 1:n_i[i]
-            jobToGraphNode[i][j] = counter
-            graphNodeToJob[counter] = (i,j)
-            push!(machineJobs[μ[i][j]], (i,j))
-            counter += 1
-        end
-    end
+
+    jobToGraphNode, graphNodeToJob, machineJobs, _ = generateUtilArrays(n, m, n_i, μ)
     upperBound = typemax(Int64)
     selectedNode::Union{ActiveScheduleNode, Nothing} = nothing
     S = Stack{ActiveScheduleNode}()
-    graph = SimpleWeightedGraphAdj(sum(n_i)+2, Int)
-    
-    for i in 1:n
-        add_edge!(graph, 1, jobToGraphNode[i][1], 0)
-        for j in 1:(n_i[i] - 1)
-            add_edge!(graph, jobToGraphNode[i][j], jobToGraphNode[i][j+1], p[i][j])
-        end
-        add_edge!(graph, jobToGraphNode[i][n_i[i]], sum(n_i)+2, p[i][n_i[i]])
-    end
+    graph = generateConjuctiveGraph(n, n_i, p, jobToGraphNode)
 
     node = ActiveScheduleNode(
         [(i,1) for i=1:n], 
@@ -57,10 +38,6 @@ function generateActiveSchedules(
     while !isempty(S)
         node = pop!(S)
         if isempty(node.Ω)
-            # if node.lowerBound == upperBound
-            #     selectedNode = node
-            #     break
-            # end
             if node.lowerBound < upperBound
                 upperBound = node.lowerBound
                 selectedNode = node
@@ -68,10 +45,7 @@ function generateActiveSchedules(
             continue
         end
 
-        minimum, index = findmin(a-> p[a[1]][a[2]] + node.r[a[1]][a[2]], node.Ω)
-        i,j = node.Ω[index]
-        i_star = μ[i][j]
-        Ω_prim = filter(a->(node.r[a[1]][a[2]] < minimum && μ[a[1]][a[2]] == i_star), node.Ω)
+        Ω_prim = generateΩ_prim(node, p, μ)
         listOfNodes = []
         for selectedOperation in Ω_prim
             newNode = ActiveScheduleNode(
@@ -114,6 +88,14 @@ function generateActiveSchedules(
         selectedNode.r + p,
         maximum(maximum.(selectedNode.r + p))
     )
+end
+
+function generateΩ_prim(node::ActiveScheduleNode, p::Vector{Vector{Int}}, μ::Vector{Vector{Int}})
+    minimum, index = findmin(a-> p[a[1]][a[2]] + node.r[a[1]][a[2]], node.Ω)
+    i,j = node.Ω[index]
+    i_star = μ[i][j]
+    Ω_prim = filter(a->(node.r[a[1]][a[2]] < minimum && μ[a[1]][a[2]] == i_star), node.Ω)
+    return Ω_prim
 end
 
 

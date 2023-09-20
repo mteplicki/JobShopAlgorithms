@@ -1,4 +1,5 @@
-function readStandardFormat(data::IO)
+import Base: write, read
+function Base.read(data::IO, ::Type{JobShopInstance})
     n, m = parse.(Int,split(readline(data), " "))
     μ = Vector{Vector{Int}}()
     p = Vector{Vector{Int}}()
@@ -14,7 +15,7 @@ function readStandardFormat(data::IO)
     return JobShopInstance(n, m, n_i, p, μ)
 end
 
-function writeStandardFormat(instance::JobShopInstance, data::IO=IOBuffer())
+function Base.write(data::IO, instance::JobShopInstance, ::Any...)
     println(data, "$(instance.n) $(instance.m)")
     for (μ_i, p_i) in zip(instance.μ, instance.p)
         list = zeros(Int, length(p_i)*2 )
