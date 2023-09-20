@@ -1,6 +1,3 @@
-# do usunięcia
-using DataStructures
-
 TwoJobsJobShop(instance::JobShopInstance) = TwoJobsJobShop(
     instance.n,
     instance.m,

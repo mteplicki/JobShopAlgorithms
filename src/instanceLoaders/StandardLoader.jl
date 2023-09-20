@@ -1,4 +1,3 @@
-import Base: write, read
 function Base.read(data::IO, ::Type{JobShopInstance})
     n, m = parse.(Int,split(readline(data), " "))
     μ = Vector{Vector{Int}}()

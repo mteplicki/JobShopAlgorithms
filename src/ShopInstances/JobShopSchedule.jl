@@ -1,5 +1,3 @@
-import Base: show
-
 struct ShopSchedule
     instance::AbstractShop
     C::Vector{Vector{Int64}}

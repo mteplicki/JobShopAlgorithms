@@ -1,5 +1,3 @@
-import Base: ==, show
-
 struct JobShopInstance <: AbstractShop
     n::Int64
     m::Int64
