@@ -1,3 +1,12 @@
+Algorithm2_2MachinesJobShop(instance::JobShopInstance) = Algorithm2_2MachinesJobShop(
+    instance.n,
+    instance.m,
+    instance.n_i,
+    instance.p,
+    instance.μ,
+    [0 for i=1:instance.n]
+)
+
 function Algorithm2_2MachinesJobShop(
     n::Int64,
     m::Int64,
@@ -6,10 +15,9 @@ function Algorithm2_2MachinesJobShop(
     μ::Vector{Vector{Int}},
     d::Vector{Int}
 )::ShopSchedule
+    all(p .== 1) || throw(ArgumentError("jobs are not unit-length"))
+    m ≤ 2 || throw(ArgumentError("m must be less than or equal to 2"))
     r = sum(n_i)
-    for job in p
-        @assert job .== 1 "jobs are not unit-length"
-    end
     A::OffsetVector{Union{Nothing, Tuple{Int64,Int64}}, Vector{Union{Nothing, Tuple{Int64,Int64}}}} = OffsetArray([nothing for i=0:r], -1)
     B::OffsetVector{Union{Nothing, Tuple{Int64,Int64}}, Vector{Union{Nothing, Tuple{Int64,Int64}}}} = OffsetArray([nothing for i=0:r], -1)
     if all(d .> 0)
@@ -43,8 +51,7 @@ function Algorithm2_2MachinesJobShop(
     end
     # do poprawy
     return ShopSchedule(
-        JobShopInstance(n, m, n_i, p, μ, d),
-        JobShopObjectiveFunction(),
+        JobShopInstance(n, m, n_i, p, μ),
         [A[i] for i=1:r],
         maximum(LAST)
     )

@@ -6,6 +6,8 @@ mutable struct ActiveScheduleNode
     r::Vector{Vector{Int64}}
 end
 
+generateActiveSchedules(instance::JobShopInstance) = generateActiveSchedules(instance.n, instance.m, instance.n_i, instance.p, instance.μ)
+
 function generateActiveSchedules(
     n::Int64,
     m::Int64,
@@ -13,6 +15,8 @@ function generateActiveSchedules(
     p::Vector{Vector{Int}},
     μ::Vector{Vector{Int}}
 )
+    # nonrepetitive
+    all(sort(collect(Set(x))) == sort(x) for x in μ) || throw(ArgumentError("μ must be nonrepetitive"))
     jobToGraphNode::Vector{Vector{Int}} = [[0 for _ in 1:n_i[i]] for i in 1:n]
     graphNodeToJob::Vector{Tuple{Int,Int}} = [(0,0) for _ in 1:(sum(n_i) + 2)]
     machineJobs::Vector{Vector{Tuple{Int,Int}}} = [[] for _ in 1:m]
@@ -98,14 +102,18 @@ function generateActiveSchedules(
             newNode.lowerBound = lowerBoundCandidate
             push!(listOfNodes, newNode)
         end
-        sort!(listOfNodes, by = x->x.lowerBound)
-        filter!(x-> x.lowerBound <= upperBound, listOfNodes)
+        sort!(listOfNodes, by = x->-x.lowerBound)
+        filter!(x-> x.lowerBound ≤ upperBound, listOfNodes)
         for nodeToPush in Iterators.reverse(listOfNodes)
             push!(S, nodeToPush)
         end
         
     end
-    return (selectedNode.r, maximum(maximum.(selectedNode.r + p)))
+    return ShopSchedule(
+        JobShopInstance(n, m, n_i, p, μ),
+        selectedNode.r + p,
+        maximum(maximum.(selectedNode.r + p))
+    )
 end
 
 

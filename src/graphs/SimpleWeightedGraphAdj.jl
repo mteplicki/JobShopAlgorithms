@@ -39,9 +39,9 @@ Graphs.add_edge!(graph::SimpleWeightedGraphAdj, edge::SimpleWeightedEdge{T,U}) w
 
 Graphs.has_edge(graph::SimpleWeightedGraphAdj, src::T, dst::T) where {T<:Integer} = any(x -> x.dst == dst, graph.edges[src])
 
-Graphs.rem_edge!(graph::SimpleWeightedGraphAdj, src::T, dst::T) where {T<:Integer} = filter!(x -> x.dst != dst, graph.edges[src])
+Graphs.rem_edge!(graph::SimpleWeightedGraphAdj, src::T, dst::T) where {T<:Integer} = filter!(x -> x.dst ≠ dst, graph.edges[src])
 
-Graphs.has_vertex(graph::SimpleWeightedGraphAdj, v::T) where {T<:Integer} = v in graph.vertices
+Graphs.has_vertex(graph::SimpleWeightedGraphAdj, v::T) where {T<:Integer} = v ∈ graph.vertices
 
 Graphs.add_vertex!(graph::SimpleWeightedGraphAdj, v::T) where {T<:Integer} = push!(graph.vertices, v)
 

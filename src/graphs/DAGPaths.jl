@@ -49,17 +49,3 @@ function topologicalSortUtil(graph::SimpleWeightedGraphAdj{V,U}, visited::BitVec
     pathVis[v] = false
     push!(stack, v)
 end
-
-# function dfs(graph::SimpleWeightedGraphAdj{V,U}, dp::Vector{V}, visited::BitVector, v::V, type::Symbol) where {V<:Integer, U<:Real}
-#     visited[v] = true
-#     for edge in graph.edges[v]
-#         if !visited[edge.dst]
-#             dfs(graph, dp, visited, edge.dst, type)
-#         end
-#         if type == :longest
-#             dp[v] = max(dp[v], dp[edge.dst] + edge.weight)
-#         elseif type == :shortest
-#             dp[v] = min(dp[v], dp[edge.dst] + edge.weight)
-#         end
-#     end
-# end

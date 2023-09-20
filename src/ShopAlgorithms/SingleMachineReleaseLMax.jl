@@ -1,3 +1,4 @@
+using DataStructures
 mutable struct JobData
     p::Int64
     r::Int64
@@ -12,8 +13,6 @@ mutable struct SingleMachineReleaseLMaxNode
     lowerBound::Union{Int64, Nothing}
     time::Union{Int64, Nothing}
 end
-
-lightCopy(job::JobData)::JobData = JobData(job.p, job.r, job.d, job.index, nothing)
 
 """
 1|R_j|Lmax
@@ -37,7 +36,7 @@ function SingleMachineReleaseLMax(
     push!(stack, node)
     while !isempty(stack)
         node = pop!(stack)
-        if length(node.jobs) == 0
+        if length(node.jobs) == 0 
             if node.lowerBound == upperBound
                 minNode = node
                 break
@@ -69,7 +68,6 @@ function SingleMachineReleaseLMax(
             end
         end
     end
-    minNode
     return minNode.lowerBound, map(x->indices[x.index], minNode.jobsOrdered)
 end
 
@@ -95,10 +93,9 @@ function SingleMachineReleaseLMaxPmtn(
     end
     t = startTime
     firstJob = dequeuesafe!(releaseQueue)
-    if firstJob === nothing
-        return max(maximum([job.C - job.d for job in jobsOrdered]; init = 0),maximum([job.C - job.d for job in jobs]; init = 0))
+    if firstJob ≢  nothing
+        enqueue!(deadlineQueue, firstJob=>firstJob.d)
     end
-    enqueue!(deadlineQueue, firstJob=>firstJob.d)
     while !isempty(deadlineQueue)
         jobToProceed = dequeue!(deadlineQueue)
         jobPreempted = false
@@ -116,7 +113,6 @@ function SingleMachineReleaseLMaxPmtn(
                 enqueue!(deadlineQueue, pmtnJob=>pmtnJob.d)
                 pmtnJob = firstsafe(releaseQueue)
             end
-
         end
         if !jobPreempted
             t += jobToProceed.p
@@ -131,7 +127,6 @@ function SingleMachineReleaseLMaxPmtn(
             end
         end
     end
-    jobs
     return max(maximum([job.C - job.d for job in jobsOrdered]; init = typemin(Int)),maximum([job.C - job.d for job in jobs]; init = typemin(Int)))
 end
 

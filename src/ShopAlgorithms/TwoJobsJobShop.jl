@@ -1,15 +1,22 @@
 # do usunięcia
 using DataStructures
 
+TwoJobsJobShop(instance::JobShopInstance) = TwoJobsJobShop(
+    instance.n,
+    instance.m,
+    instance.n_i,
+    instance.p,
+    instance.μ
+)
+
 function TwoJobsJobShop(
     n::Int64,
     m::Int64,
     n_i::Vector{Int},
     p::Vector{Vector{Int}},
     μ::Vector{Vector{Int}},
-    d::Vector{Int},
 )
-    @assert n == 2 "n not equals to 2"
+    n == 2 || throw(ArgumentError("n must be equal to 2"))
     (points, obstacles, size) = createPoints(n_i, p, μ)
     (network, points, ONumber) = createNetwork(points, obstacles, size)
     d = [typemax(Int64) for _ in 1:(length(points) + 1)]

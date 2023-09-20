@@ -1,3 +1,11 @@
+shiftingBottleneck(instance::JobShopInstance) = shiftingBottleneck(
+    instance.n,
+    instance.m,
+    instance.n_i,
+    instance.p,
+    instance.μ
+)
+
 function shiftingBottleneck(
     n::Int64,
     m::Int64,
@@ -5,6 +13,9 @@ function shiftingBottleneck(
     p::Vector{Vector{Int}},
     μ::Vector{Vector{Int}}
 )
+    # nonrepetitive
+    all(sort(collect(Set(x))) == sort(x) for x in μ) || throw(ArgumentError("μ must be nonrepetitive"))   
+    
     jobToGraphNode::Vector{Vector{Int}} = [[0 for _ in 1:n_i[i]] for i in 1:n]
     graphNodeToJob::Vector{Tuple{Int,Int}} = [(0,0) for _ in 1:(sum(n_i) + 2)]
     machineJobs::Vector{Vector{Tuple{Int,Int}}} = [[] for _ in 1:m]
@@ -71,6 +82,10 @@ function shiftingBottleneck(
         r, rGraph = generateReleaseTimes(graph, n_i, graphNodeToJob)
     end
     Cmax = rGraph[sum(n_i)+2]
-    return (r, Cmax)
+    return ShopSchedule(
+        JobShopInstance(n, m, n_i, p, μ),
+        r + p,
+        Cmax
+    )
 end
 
