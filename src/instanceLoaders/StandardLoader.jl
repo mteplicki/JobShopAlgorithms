@@ -15,6 +15,10 @@ function Base.read(data::IO, ::Type{JobShopInstance})
     return JobShopInstance(n, m, n_i, p, μ)
 end
 
+Base.read(filename::AbstractString, ::Type{JobShopInstance}) = open(filename) do data
+    read(data, JobShopInstance)
+end
+
 function Base.write(data::IO, instance::JobShopInstance, ::Any...)
     println(data, "$(instance.n) $(instance.m)")
     for (μ_i, p_i) in zip(instance.μ, instance.p)
@@ -24,4 +28,8 @@ function Base.write(data::IO, instance::JobShopInstance, ::Any...)
         println(data, join(list, " "))
     end
     return data
+end
+
+Base.write(filename::AbstractString, instance::JobShopInstance, args...) = open(filename, args...) do data
+    write(data, instance)
 end

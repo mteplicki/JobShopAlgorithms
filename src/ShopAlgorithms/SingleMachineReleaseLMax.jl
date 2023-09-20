@@ -1,4 +1,3 @@
-using DataStructures
 mutable struct JobData
     p::Int64
     r::Int64

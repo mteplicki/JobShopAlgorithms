@@ -18,7 +18,7 @@ module ShopAlgorithms
     include("ShopAlgorithms/TwoJobsJobShop.jl")
     include("ShopAlgorithms/ShiftingBottleneck.jl")
 
-    function test()
+    function test1()
         n = 3
         m = 4
         n_i = [3,4,3]
@@ -31,7 +31,7 @@ module ShopAlgorithms
         # println("")
     end
     
-    test()
+    test1()
     
     
 
