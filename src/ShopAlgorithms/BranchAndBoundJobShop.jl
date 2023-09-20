@@ -57,10 +57,10 @@ function generateActiveSchedules(
     while !isempty(S)
         node = pop!(S)
         if isempty(node.Ω)
-            if node.lowerBound == upperBound
-                selectedNode = node
-                break
-            end
+            # if node.lowerBound == upperBound
+            #     selectedNode = node
+            #     break
+            # end
             if node.lowerBound < upperBound
                 upperBound = node.lowerBound
                 selectedNode = node
@@ -102,7 +102,7 @@ function generateActiveSchedules(
             newNode.lowerBound = lowerBoundCandidate
             push!(listOfNodes, newNode)
         end
-        sort!(listOfNodes, by = x->-x.lowerBound)
+        sort!(listOfNodes, by = x->x.lowerBound)
         filter!(x-> x.lowerBound ≤ upperBound, listOfNodes)
         for nodeToPush in Iterators.reverse(listOfNodes)
             push!(S, nodeToPush)

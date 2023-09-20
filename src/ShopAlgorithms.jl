@@ -19,13 +19,13 @@ module ShopAlgorithms
     include("ShopAlgorithms/ShiftingBottleneck.jl")
 
     function test()
-        n = 3
-        m = 4
-        n_i = [3,4,3]
-        p = [[10,8,4],[8,3,5,6],[4,7,3]]
-        μ = [[1,2,3],[2,1,4,3],[1,2,4]]
-        instance = JobShopInstance(n,m,n_i,p,μ)
-        # instance = open(readStandardFormat, "test2.txt")
+        # n = 3
+        # m = 4
+        # n_i = [3,4,3]
+        # p = [[10,8,4],[8,3,5,6],[4,7,3]]
+        # μ = [[1,2,3],[2,1,4,3],[1,2,4]]
+        # instance = JobShopInstance(n,m,n_i,p,μ)
+        instance = open(readStandardFormat, "test2.txt")
         println(instance)
         println(generateActiveSchedules(instance))
         println("")

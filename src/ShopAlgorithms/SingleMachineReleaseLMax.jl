@@ -62,7 +62,7 @@ function SingleMachineReleaseLMax(
                     push!(listToPush, nodeCopy)
                 end
             end
-            sort!(listToPush, by = x->-x.lowerBound)
+            sort!(listToPush, by = x->x.lowerBound)
             for nodeToPush in listToPush
                 push!(stack, nodeToPush)
             end
