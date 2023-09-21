@@ -1,34 +1,5 @@
-TwoJobsJobShop(instance::JobShopInstance) = TwoJobsJobShop(
-    instance.n,
-    instance.m,
-    instance.n_i,
-    instance.p,
-    instance.μ
-)
-
-function TwoJobsJobShop(
-    n::Int64,
-    m::Int64,
-    n_i::Vector{Int},
-    p::Vector{Vector{Int}},
-    μ::Vector{Vector{Int}},
-)
-    n == 2 || throw(ArgumentError("n must be equal to 2"))
-    (points, obstacles, size) = createPoints(n_i, p, μ)
-    (network, points, ONumber) = createNetwork(points, obstacles, size)
-    d = [typemax(Int64) for _ in 1:(length(points)+1)]
-    previous = [typemax(Int64) for _ in 1:(length(points)+1)]
-    d[ONumber] = 0
-    for node in network
-        for successor in node.Successors
-            if d[successor.successorNumber] > d[successor.from] + successor.distance
-                d[successor.successorNumber] = d[successor.from] + successor.distance
-                previous[successor.successorNumber] = successor.from
-            end
-        end
-    end
-    return reconstructPath(n_i, p, obstacles, points, length(points) + 1, ONumber, previous)
-end
+import DataStructures: insert!
+import Plots: plot, plot!
 
 @enum PointType begin
     NW
@@ -58,6 +29,7 @@ struct Obstacle
 end
 
 struct Successor
+    point::Point
     successorNumber::Int64
     distance::Int64
     from::Int64
@@ -67,58 +39,106 @@ struct NetworkNode
     Successors::Vector{Successor}
 end
 
-function reconstructPath(
+struct LexicographicOrdering <: Base.Order.Ordering
+end
+
+Base.Order.lt(::LexicographicOrdering, p1::Point, p2::Point) = p1.coordinate.y < p2.coordinate.y || (p1.coordinate.y == p2.coordinate.y && p1.coordinate.x < p2.coordinate.x)
+
+two_jobs_job_shop(instance::JobShopInstance) = two_jobs_job_shop(
+    instance.n,
+    instance.m,
+    instance.n_i,
+    instance.p,
+    instance.μ
+)
+
+function two_jobs_job_shop(
+    n::Int64,
+    m::Int64,
+    n_i::Vector{Int},
+    p::Vector{Vector{Int}},
+    μ::Vector{Vector{Int}},
+)
+    n == 2 || throw(ArgumentError("n must be equal to 2"))
+    (points, obstacles, size) = createpoints(n_i, p, μ)
+    (network, _, ONumber) = createnetwork(points, obstacles, size)
+    d = OffsetArray([Int64(typemax(Int32)) for _ in 1:(length(points)+1)], -1)
+    previous::Vector{Union{Nothing, Int}} = [nothing for _ in 1:(length(points)+1)]
+    
+    d[ONumber] = 0
+    for node in network
+        for successor in node.Successors
+            if d[successor.successorNumber] > d[successor.from] + successor.distance
+                d[successor.successorNumber] = d[successor.from] + successor.distance
+                previous[successor.successorNumber] = successor.from
+            end
+        end
+    end
+    C = reconstructpath(n_i, p, obstacles, points, length(points) - 1, ONumber, previous)
+    return ShopSchedule(
+        JobShopInstance(n, m, n_i, p, μ), 
+        C,
+        max(maximum(C[1]), maximum(C[2])))
+end
+
+
+
+function reconstructpath(
     n_i::Vector{Int},
     p::Vector{Vector{Int}},
     obstacles::Vector{Obstacle},
-    points::Vector{Point},
+    points::OffsetVector{Point},
     FNumber::Int64,
     ONumber::Int64,
-    previous::Vector{Int}
+    previous::Vector{Union{Nothing, Int}}
 )
     path = Vector{Int64}()
     current = FNumber
-    while current != ONumber
+    while current != 0
         pushfirst!(path, current)
         current = previous[current]
     end
+    pushfirst!(path, 0)
     t = [0, 0]
     currentJob = [0, 0]
     time = [Vector{Int64}(), Vector{Int64}()]
 
     #TODO do poprawy nextObstacleNumber
-    for (index, pointNumber) in enumerate(path)
+    for index in Iterators.take(eachindex(path), length(path)-1)
         nextPointNumber = path[index+1]
         nextPoint = points[nextPointNumber]
-        nextObstacleNumber = points[nextPointNumber].obstacleNumber
-        nextObstacle = obstacles[nextObstacleNumber]
+        
         if nextPoint.type == SE
+            nextObstacleNumber = points[nextPointNumber].obstacleNumber
+            nextObstacle = obstacles[nextObstacleNumber]
             for job in (currentJob[1]+1):(nextObstacle.job1)
-                t[1] += p[1, nextObstacle.job]
+                t[1] += p[1][job]
                 push!(time[1], t[1])
             end
             for job in (currentJob[2]+1):(nextObstacle.job2-1)
-                t[2] += p[2, nextObstacle.job]
+                t[2] += p[2][job]
                 push!(time[2], t[2])
             end
             t[2] = t[1]
         elseif nextPoint.type == NW
+            nextObstacleNumber = points[nextPointNumber].obstacleNumber
+            nextObstacle = obstacles[nextObstacleNumber]
             for job in (currentJob[1]+1):(nextObstacle.job1-1)
-                t[1] += p[1, nextObstacle.job]
+                t[1] += p[1][job]
                 push!(time[1], t[1])
             end
             for job in (currentJob[2]+1):(nextObstacle.job2)
-                t[2] += p[2, nextObstacle.job]
+                t[2] += p[2][job]
                 push!(time[2], t[2])
             end
             t[1] = t[2]
         else # F-type point
             for job in (currentJob[1]+1):(n_i[1])
-                t[1] += p[1, nextObstacle.job]
+                t[1] += p[1][job]
                 push!(time[1], t[1])
             end
             for job in (currentJob[2]+1):(n_i[2])
-                t[2] += p[2, nextObstacle.job]
+                t[2] += p[2][job]
                 push!(time[2], t[2])
             end
         end
@@ -126,7 +146,7 @@ function reconstructPath(
     return time
 
 end
-function createPoints(
+function createpoints(
     n_i::Vector{Int},
     p::Vector{Vector{Int}},
     μ::Vector{Vector{Int}}
@@ -140,14 +160,16 @@ function createPoints(
         end
     end
     obstacles = Vector{Obstacle}()
-    points = Vector{Point}()
+    points = OffsetVector{Point}([Point(Coordinate(0, 0), 0, 0, O)], -1)
     obstacleCount = 0
+    pointCount = 1
     for j in 1:n_i[2]
         for k in 1:n_i[1]
             if μ[1][k] == μ[2][j]
                 obstacleCount += 1
-                NWpoint = Point(Coordinate(distanceFromOrigin[1][k] - p[1][k], distanceFromOrigin[2][j]), obstacleCount, nothing, NW)
-                SEpoint = Point(Coordinate(distanceFromOrigin[1][k], distanceFromOrigin[2][j] - p[2][j]), obstacleCount, nothing, SE)
+                NWpoint = Point(Coordinate(distanceFromOrigin[1][k] - p[1][k], distanceFromOrigin[2][j]), obstacleCount, pointCount, NW)
+                SEpoint = Point(Coordinate(distanceFromOrigin[1][k], distanceFromOrigin[2][j] - p[2][j]), obstacleCount, pointCount + 1, SE)
+                pointCount += 2
                 obstacle = Obstacle(NWpoint, SEpoint, obstacleCount, k, j)
                 push!(obstacles, obstacle)
                 push!(points, NWpoint)
@@ -155,6 +177,8 @@ function createPoints(
             end
         end
     end
+    Fpoint = Point(Coordinate(size[1], size[2]), nothing, length(points), F)
+    push!(points, Fpoint)
     return points, obstacles, size
 end
 
@@ -163,37 +187,98 @@ function distance(point1::Point, point2::Point)
 end
 
 
-function createNetwork(
-    points::Vector{Point},
+function createnetwork(
+    pointsUnsorted::OffsetVector{Point},
     obstacles::Vector{Obstacle},
     size::Vector{Int},
 )
-    network = OffsetVector([NetworkNode(Vector{Successor}()) for i in 1:length(points)], -1)
-    push!(points, Point(Coordinate(0, 0), 0, nothing, O))
+    network = OffsetVector([NetworkNode(Vector{Successor}()) for _ in 1:length(pointsUnsorted)], -1)
+    
     S = SortedSet{Int}()
-    sort!(points, alg=MergeSort(), by=point -> point.coordinate.y - point.coordinate.x, rev=true)
-    for index in eachindex(points)
-        points[index].pointNumber = index
-    end
-    F = Point(Coordinate(size[1], size[2]), nothing, length(points) + 1, F)
+    Fpoint = pointsUnsorted[end]
+    points = sort(pointsUnsorted, alg=MergeSort, by=point -> point.coordinate.y - point.coordinate.x, rev=true)
+    
     # create network
     ONumber = 0
     for point in points
         #pole do debugowania
+        if point.type == F
+            continue
+        end
         (_, currentToken) = insert!(S, point.obstacleNumber) # dziwne
         advanceToken = advance((S, currentToken))
-        startingObstacle = point.obstacleNumber
-        if status(advanceToken) == 3 # 3 - to jest token na końcu
-            push!(network[startingObstacle].Successors, Successor(F.pointNumber, distance(point, F), point.pointNumber))
+        startingObstacle = point.pointNumber
+        if status((S,advanceToken)) == 3 # 3 - to jest token na końcu
+            push!(network[startingObstacle].Successors, Successor(Fpoint,Fpoint.pointNumber, distance(point, Fpoint), point.pointNumber))
         else
             obstacle::Obstacle = obstacles[deref((S, advanceToken))]
-            push!(network[startingObstacle].Successors, Successor(obstacle.SE.pointNumber, distance(point, obstacle.SE), point.pointNumber))
-            push!(network[startingObstacle].Successors, Successor(obstacle.NW.pointNumber, distance(point, obstacle.NW), point.pointNumber))
+            push!(network[startingObstacle].Successors, Successor(pointsUnsorted[obstacle.SE.pointNumber],obstacle.SE.pointNumber, distance(point, obstacle.SE), point.pointNumber))
+            push!(network[startingObstacle].Successors, Successor(pointsUnsorted[obstacle.NW.pointNumber],obstacle.NW.pointNumber, distance(point, obstacle.NW), point.pointNumber))
         end
         if point.type == SE || point.type == O
+            S = delete!(S, point.obstacleNumber)
+        end
+        if point.type == O
             ONumber = point.pointNumber
-            S = delete!(S, point.obstacle)
         end
     end
     return network, points, ONumber
 end
+
+@enum LineType begin
+    Horizontal
+    Vertical
+    Diagonal
+end
+
+function plot_solution(solution::ShopSchedule)
+    rectangle(w, h, x, y) = Shape(x .+ [0,w,w,0], y .+ [0,0,h,h])
+    solution.instance.n == 2 || throw(ArgumentError("n must be equal to 2"))
+    a = [[0], [0]]
+    for (index, i) in enumerate(solution.instance.p)
+        for j in i
+            push!(a[index], a[index][end] + j)
+        end
+    end
+
+    range1 = a[1][end]
+    range2 = a[2][end]
+    p = plot(xlims=(0,range1), ylims=(0,range2), aspect_ratio=:equal)
+    for i in 1:solution.instance.n_i[1]
+        for j in 1:solution.instance.n_i[2]
+            if solution.instance.μ[1][i] == solution.instance.μ[2][j]
+                x = a[1][i]
+                y = a[2][j]
+                w = solution.instance.p[1][i]
+                h = solution.instance.p[2][j]
+                plot!(p, rectangle(w, h, x, y), label="$(solution.instance.μ[1][i])")
+            end
+        end
+    end
+    lastPosition = [0, 0]
+    startTime = solution.C .- solution.instance.p
+
+    C1 = collect(zip(solution.C[1], [1 for i in 1:length(solution.C[1])]))
+    C2 = collect(zip(solution.C[2], [2 for i in 1:length(solution.C[1])]))
+    C = sort(vcat(C1, C2), by = x -> x[1])
+    time = 0
+    while !(isempty(C))
+        c, job = popfirst!(C)
+        progress = c - time
+        time = c
+        if isempty(startTime[2]) || startTime[2][1] >= time
+            plot!(p, [lastPosition[1], lastPosition[1] + progress], [lastPosition[2], lastPosition[2]], color=:red, label="")
+            lastPosition = [lastPosition[1] + progress, lastPosition[2]]
+        
+        elseif isempty(startTime[1]) || startTime[1][1] >= time
+            plot!(p, [lastPosition[1], lastPosition[1]], [lastPosition[2], lastPosition[2] + progress], color=:red, label="")
+            lastPosition = [lastPosition[1], lastPosition[2] + progress]
+        elseif startTime[1][1] < time && startTime[2][1] < time
+            plot!(p, [lastPosition[1], lastPosition[1] + progress], [lastPosition[2], lastPosition[2] + progress], color=:red, label="")
+            lastPosition = [lastPosition[1] + progress, lastPosition[2] + progress]
+        end
+        deleteat!(startTime[job], 1)
+    end
+    return p
+end
+

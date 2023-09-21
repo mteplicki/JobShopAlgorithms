@@ -16,7 +16,7 @@ end
 """
 1|R_j|Lmax
 """
-function SingleMachineReleaseLMax(
+function single_machine_release_LMax(
     p::Vector{Int64},
     r::Vector{Int64},
     d::Vector{Int64},
@@ -28,7 +28,7 @@ function SingleMachineReleaseLMax(
     stack = Stack{SingleMachineReleaseLMaxNode}()
     node = SingleMachineReleaseLMaxNode([i for i in 1:length(p)], [], 0, 0)
 
-    node.lowerBound = SingleMachineReleaseLMaxPmtn([JobData(p[i], r[i], d[i], i, nothing) for i in node.jobs], node.jobsOrdered, node.time)
+    node.lowerBound = single_machine_release_LMax_pmtn([JobData(p[i], r[i], d[i], i, nothing) for i in node.jobs], node.jobsOrdered, node.time)
     push!(stack, node)
     while !isempty(stack)
         node = pop!(stack)
@@ -56,13 +56,13 @@ function SingleMachineReleaseLMax(
                     continue
                 end
                 # obliczmy dolną granicę dla tego węzła, stosując algorytm 1|R_j,pmtn|Lmax
-                nodeCopy.lowerBound = SingleMachineReleaseLMaxPmtn([JobData(p[i], r[i], d[i], i, nothing) for i in nodeCopy.jobs], nodeCopy.jobsOrdered, nodeCopy.time)
+                nodeCopy.lowerBound = single_machine_release_LMax_pmtn([JobData(p[i], r[i], d[i], i, nothing) for i in nodeCopy.jobs], nodeCopy.jobsOrdered, nodeCopy.time)
                 push!(listToPush, nodeCopy)
             end
             # sortujemy listę węzłów do dodania po dolnej granicy, zaczynamy od najbardziej obiecujących kandydatów
             sort!(listToPush, by=x -> x.lowerBound)
             # filtrujemy listę węzłów do dodania, usuwamy te, które mają dolną granicę większą niż obecny upperBound
-            filter!(x -> x.lowerBound <= upperBound, listToPush)
+            filter!(x -> x.lowerBound < upperBound, listToPush)
             for nodeToPush in listToPush
                 push!(stack, nodeToPush)
             end
@@ -74,6 +74,7 @@ end
 Safe dequeue function. If queue is empty, returns nothing instead of throwing an error.
 """
 dequeuesafe!(queue::PriorityQueue{K,V}) where {K,V} = isempty(queue) ? nothing : dequeue!(queue)
+
 """
 Safe first function. If queue is empty, returns nothing instead of throwing an error.
 """
@@ -83,32 +84,42 @@ firstsafe(queue::PriorityQueue{K,V}) where {K,V} = isempty(queue) ? nothing : fi
 1|R_j,pmtn|Lmax\\
 preemptive EDD
 """
-function SingleMachineReleaseLMaxPmtn(
+function single_machine_release_LMax_pmtn(
     jobs::Vector{JobData},
     jobsOrdered::Vector{JobData},
-    startTime::Int64
+    startTime::Int64=0
 )::Int
-    # 
+    # algorytm 1|R_j,pmtn|Lmax, preemptive EDD (Earliest Due Date)
+
+    # modyfikujemy r_i, tak aby r_i >= startTime (czyli żeby zadanie i nie zaczęło się wcześniej, niż poprzednie uporządkowane już zadania)
     for job in jobs
         job.r = max(job.r, startTime)
     end
+    # kolejka priorytetowa, zawierająca wszystkie zadania, które jeszcze nie są dostępne (r_i > t), posortowane po r_i
     releaseQueue = PriorityQueue{JobData,Int}()
-    deadlineQueue = PriorityQueue{JobData,Int}()
     for (i, job) in enumerate(jobs)
         enqueue!(releaseQueue, job => job.r)
     end
+    # kolejka priorytetowa, zawierająca wszystkie zadania, które są dostępne i niewykonane do końca (r_i <= t), posortowane po d_i
+    deadlineQueue = PriorityQueue{JobData,Int}()
+    # t - aktualny czas
     t = startTime
+    # ściągamy pierwsze zadanie z kolejki releaseQueue (pierwsze dostępne zadanie) i dodejemy je do kolejki deadlineQueue (już dostępnych zadań)
     firstJob = dequeuesafe!(releaseQueue)
     if firstJob ≢ nothing
         enqueue!(deadlineQueue, firstJob => firstJob.d)
     end
     while !isempty(deadlineQueue)
         jobToProceed = dequeue!(deadlineQueue)
+        # flaga informująca, czy zadanie jobToProceed zostało przerwane przez jakieś inne zadanie,
+        # które zostało dostępne w czasie wykonywania jobToProceed, a ma szybszy deadline
         jobPreempted = false
         time = max(t, jobToProceed.r)
+        # ściągamy z kolejki releaseQueue wszystkie zadania, które są dostępne w czasie wykonywania jobToProceed
         pmtnJob = firstsafe(releaseQueue)
         while !jobPreempted && pmtnJob !== nothing && pmtnJob.r < time + jobToProceed.p
             pmtnJob = dequeue!(releaseQueue)
+            # jeśli zadanie pmtnJob ma szybszy deadline niż jobToProceed, to przerwij wykonywanie jobToProceed i dodaj je do kolejki deadlineQueue
             if pmtnJob.d <= jobToProceed.d
                 jobPreempted = true
                 jobToProceed.p -= pmtnJob.r - time
@@ -116,14 +127,18 @@ function SingleMachineReleaseLMaxPmtn(
                 enqueue!(deadlineQueue, jobToProceed => jobToProceed.d)
                 enqueue!(deadlineQueue, pmtnJob => pmtnJob.d)
             else
+                # jeśli zadanie pmtnJob ma późniejszy deadline niż jobToProceed, to dodaj je do kolejki deadlineQueue
                 enqueue!(deadlineQueue, pmtnJob => pmtnJob.d)
                 pmtnJob = firstsafe(releaseQueue)
             end
         end
+        # jeśli zadanie jobToProceed nie zostało przerwane, to wykonaj je do końca
         if !jobPreempted
             t += jobToProceed.p
             jobToProceed.C = t
         end
+        # jeśli kolejka deadlineQueue jest pusta, a releaseQueue jeszcze nie jest pusta, to dodaj do deadlineQueue zadanie, które zostało dostępne jako pierwsze
+        # taka sytuacja może wystąpić, jeśli w czasie wykonywania jobToProceed, nie było innych zadań dostępnych, a pojawiły się one dopiero po jego zakończeniu
         if isempty(deadlineQueue) && !isempty(releaseQueue)
             jobAfterProceeded = dequeue!(releaseQueue)
             enqueue!(deadlineQueue, jobAfterProceeded => jobAfterProceeded.d)
@@ -137,7 +152,7 @@ function SingleMachineReleaseLMaxPmtn(
 end
 
 function test()
-    result = SingleMachineReleaseLMax([10, 3, 4], [0, 10, 10], [14, 17, 18])
+    result = single_machine_release_LMax([10, 3, 4], [0, 10, 10], [14, 17, 18])
     println(result)
 end
 

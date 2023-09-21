@@ -1,4 +1,4 @@
-shiftingBottleneck(instance::JobShopInstance) = shiftingBottleneck(
+shiftingbottleneck(instance::JobShopInstance) = shiftingbottleneck(
     instance.n,
     instance.m,
     instance.n_i,
@@ -6,7 +6,7 @@ shiftingBottleneck(instance::JobShopInstance) = shiftingBottleneck(
     instance.μ
 )
 
-function shiftingBottleneck(
+function shiftingbottleneck(
     n::Int64,
     m::Int64,
     n_i::Vector{Int},
@@ -16,12 +16,12 @@ function shiftingBottleneck(
     # nonrepetitive
     all(sort(collect(Set(x))) == sort(x) for x in μ) || throw(ArgumentError("μ must be nonrepetitive"))
 
-    jobToGraphNode, graphNodeToJob, machineJobs, machineWithJobs = generateUtilArrays(n, m, n_i, μ)
+    jobToGraphNode, graphNodeToJob, machineJobs, machineWithJobs = generate_util_arrays(n, m, n_i, μ)
     machineFixedEdges::Vector{Vector{Tuple{Int,Int}}} = [[] for _ in 1:m]
 
-    graph = generateConjuctiveGraph(n, n_i, p, jobToGraphNode)
+    graph = generate_conjuctive_graph(n, n_i, p, jobToGraphNode)
 
-    r, rGraph = generateReleaseTimes(graph, n_i, graphNodeToJob)
+    r, rGraph = generate_release_times(graph, n_i, graphNodeToJob)
     M_0 = Set{Int}()
     M = Set{Int}([i for i in 1:m])
     Cmax = rGraph[sum(n_i)+2]
@@ -31,7 +31,7 @@ function shiftingBottleneck(
         k::Union{Int,Nothing} = nothing
         sequence::Union{Vector{Int},Nothing} = nothing
         for i in setdiff(M, M_0)
-            LmaxCandidate, sequenceCandidate = generateSequence(p, r, n_i, machineJobs, jobToGraphNode, graph, Cmax, i)
+            LmaxCandidate, sequenceCandidate = generate_sequence(p, r, n_i, machineJobs, jobToGraphNode, graph, Cmax, i)
             if LmaxCandidate >= Lmax
                 Lmax = LmaxCandidate
                 sequence = sequenceCandidate
@@ -40,25 +40,25 @@ function shiftingBottleneck(
         end
         M_0 = M_0 ∪ k
         Cmax += Lmax
-        fixDisjunctiveEdges(sequence, machineWithJobs, jobToGraphNode, graph, p, k, machineFixedEdges)
+        fix_disjunctive_edges(sequence, machineWithJobs, jobToGraphNode, graph, p, k, machineFixedEdges)
         for fixMachine in setdiff(M_0, Set([k]))
             backUpGraph = deepcopy(graph)
             for (job1, job2) in machineFixedEdges[fixMachine]
                 rem_edge!(graph, job1, job2)
             end
 
-            r, rGraph = generateReleaseTimes(graph, n_i, graphNodeToJob)
+            r, rGraph = generate_release_times(graph, n_i, graphNodeToJob)
             longestPath = rGraph[sum(n_i)+2]
-            LmaxCandidate, sequenceCandidate = generateSequence(p, r, n_i, machineJobs, jobToGraphNode, graph, Cmax, fixMachine)
+            LmaxCandidate, sequenceCandidate = generate_sequence(p, r, n_i, machineJobs, jobToGraphNode, graph, Cmax, fixMachine)
             if LmaxCandidate + longestPath >= Cmax
                 graph = backUpGraph
             else
                 empty!(machineFixedEdges[fixMachine])
                 Cmax = LmaxCandidate + longestPath
-                fixDisjunctiveEdges(sequenceCandidate, machineWithJobs, jobToGraphNode, graph, p, fixMachine, machineFixedEdges)
+                fix_disjunctive_edges(sequenceCandidate, machineWithJobs, jobToGraphNode, graph, p, fixMachine, machineFixedEdges)
             end
         end
-        r, rGraph = generateReleaseTimes(graph, n_i, graphNodeToJob)
+        r, rGraph = generate_release_times(graph, n_i, graphNodeToJob)
     end
     Cmax = rGraph[sum(n_i)+2]
     return ShopSchedule(

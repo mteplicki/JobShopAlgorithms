@@ -1,9 +1,10 @@
-import .ShopAlgorithms: JobShopInstance, generateActiveSchedules
+import .ShopAlgorithms: JobShopInstance, generate_active_schedules, StandardSpecification
 
-testBranchAndBound(filename::AbstractString, expectedValue::Int) = testBranchAndBound(read(filename, JobShopInstance), expectedValue)
-testBranchAndBound(instance::JobShopInstance, expectedValue::Int) = 
-testsWithResults = [("instances/test1.txt", 28), ]
-@testset "BranchAndBoundTest" for (filename, expectedValue) in testsWithResults
-    # @test testBranchAndBound("instances/test.txt", 55)
-    @test generateActiveSchedules(instance).objectiveValue == 28
+testsWithResults = [
+    ("instances/test1.txt", 28), 
+    ("instances/test.txt", 55)
+    #, ("instances/test3.txt", 666)
+    ]
+@testset "BranchAndBoundTest" verbose = true for (filename, expectedValue) in testsWithResults 
+    @test generate_active_schedules(open(x->read(x, StandardSpecification), filename)).objectiveValue == expectedValue
 end

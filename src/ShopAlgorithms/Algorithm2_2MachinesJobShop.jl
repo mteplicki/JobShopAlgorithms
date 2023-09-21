@@ -1,4 +1,4 @@
-Algorithm2_2MachinesJobShop(instance::JobShopInstance) = Algorithm2_2MachinesJobShop(
+algorithm2_2machinesjobshop(instance::JobShopInstance) = algorithm2_2machinesjobshop(
     instance.n,
     instance.m,
     instance.n_i,
@@ -7,7 +7,7 @@ Algorithm2_2MachinesJobShop(instance::JobShopInstance) = Algorithm2_2MachinesJob
     [0 for i = 1:instance.n]
 )
 
-function Algorithm2_2MachinesJobShop(
+function algorithm2_2machinesjobshop(
     n::Int64,
     m::Int64,
     n_i::Vector{Int},
@@ -40,13 +40,13 @@ function Algorithm2_2MachinesJobShop(
     for k = -r+1:r-1
         while !empty(L[k])
             O = popfirst!(L[k])
-            Schedule_Oij(O, T1, T2, A, B, LAST, μ)
+            schedule_Oij(O, T1, T2, A, B, LAST, μ)
         end
     end
     while !empty(Z)
         i = popfirst!(Z)
         for j = 1:n_i[i]
-            Schedule_Oij((i, j), T1, T2, A, B, LAST, μ)
+            schedule_Oij((i, j), T1, T2, A, B, LAST, μ)
         end
     end
     # do poprawy
@@ -57,7 +57,7 @@ function Algorithm2_2MachinesJobShop(
     )
 end
 
-function Schedule_Oij(
+function schedule_Oij(
     O::Tuple{Int64,Int64},
     T1::Ref{Int64},
     T2::Ref{Int64},

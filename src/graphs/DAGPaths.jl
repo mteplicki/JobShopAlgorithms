@@ -1,6 +1,6 @@
 # dodaj sortowanie topologiczne
 
-function DAGpaths(graph::SimpleWeightedGraphAdj{V,U}, source::V, type::Symbol) where {V<:Integer, U<:Real} 
+function dag_paths(graph::SimpleWeightedGraphAdj{V,U}, source::V, type::Symbol) where {V<:Integer, U<:Real} 
     
     if type == :longest
         dist = fill(typemin(V), length(graph.vertices))
@@ -14,7 +14,7 @@ function DAGpaths(graph::SimpleWeightedGraphAdj{V,U}, source::V, type::Symbol) w
     stack = Stack{V}()
     for i in 1:length(graph.vertices)
         if !visited[i]
-            topologicalSortUtil(graph, visited, pathVis, stack, i)
+            topological_sort_util(graph, visited, pathVis, stack, i)
         end
     end
 
@@ -36,12 +36,12 @@ function DAGpaths(graph::SimpleWeightedGraphAdj{V,U}, source::V, type::Symbol) w
     return dist
 end
 
-function topologicalSortUtil(graph::SimpleWeightedGraphAdj{V,U}, visited::BitVector, pathVis::BitVector, stack::Stack{V}, v::V) where {V<:Integer, U<:Real}
+function topological_sort_util(graph::SimpleWeightedGraphAdj{V,U}, visited::BitVector, pathVis::BitVector, stack::Stack{V}, v::V) where {V<:Integer, U<:Real}
     visited[v] = true
     pathVis[v] = true
     for edge in graph.edges[v]
         if !visited[edge.dst]
-            topologicalSortUtil(graph, visited, pathVis, stack, edge.dst)
+            topological_sort_util(graph, visited, pathVis, stack, edge.dst)
         elseif pathVis[edge.dst]
             throw(ArgumentError("Graph is not a DAG"))
         end

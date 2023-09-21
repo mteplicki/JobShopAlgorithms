@@ -1,5 +1,8 @@
-function generateReleaseTimes(graph::SimpleWeightedGraphAdj{Int, Int}, n_i::Vector{Int}, graphNodeToJob::Vector{Tuple{Int,Int}})
-    rGraph = DAGpaths(graph, 1, :longest)
+""" 
+generates a release times for a given disjunctive graph
+"""
+function generate_release_times(graph::SimpleWeightedGraphAdj{Int, Int}, n_i::Vector{Int}, graphNodeToJob::Vector{Tuple{Int,Int}})
+    rGraph = dag_paths(graph, 1, :longest)
     r = [[0 for _ in 1:a] for a in n_i]
     for (index, value) in enumerate(rGraph)
         if index == 1 || index == sum(n_i)+2 
@@ -11,29 +14,43 @@ function generateReleaseTimes(graph::SimpleWeightedGraphAdj{Int, Int}, n_i::Vect
     return r, rGraph
 end
 
-function generateSequence(p::Vector{Vector{Int}}, r::Vector{Vector{Int}}, n_i::Vector{Int}, machineJobs::Vector{Vector{Tuple{Int,Int}}}, jobToGraphNode::Vector{Vector{Int}}, graph::SimpleWeightedGraphAdj{Int, Int}, Cmax::Int64, i::Int)
+"""
+    Generate a sequence of jobs on a given machine, with a 1|r_j|Lmax criterion
+"""
+function generate_sequence(p::Vector{Vector{Int}}, r::Vector{Vector{Int}}, n_i::Vector{Int}, machineJobs::Vector{Vector{Tuple{Int,Int}}}, jobToGraphNode::Vector{Vector{Int}}, graph::SimpleWeightedGraphAdj{Int, Int}, Cmax::Int64, i::Int)
     indices::Vector{Int} = [job[1] for job in machineJobs[i]]
     newP = [p[job[1]][job[2]] for job in machineJobs[i]]
     newD::Vector{Int} = []
     newR = [r[job[1]][job[2]] for job in machineJobs[i]]
     for job in machineJobs[i]
-        d = DAGpaths(graph, jobToGraphNode[job[1]][job[2]], :longest)
+        d = dag_paths(graph, jobToGraphNode[job[1]][job[2]], :longest)
+        p
         push!(newD, Cmax + p[job[1]][job[2]] - d[sum(n_i) + 2])
     end
 
-    return SingleMachineReleaseLMax(newP,newR,newD, indices)
+    return single_machine_release_LMax(newP,newR,newD, indices)
 end
 
-function fixDisjunctiveEdges(sequenceCandidate::Vector{Int}, machineWithJobs::Vector{Vector{Tuple{Int,Int}}}, jobToGraphNode::Vector{Vector{Int}}, graph::SimpleWeightedGraphAdj{Int, Int}, p::Vector{Vector{Int}}, fixMachine::Int64, machineFixedEdges::Vector{Vector{Tuple{Int,Int}}})
-    for (job1, job2) in Iterators.zip(sequenceCandidate, Iterators.drop(sequenceCandidate, 1))
-        i1, j1 = machineWithJobs[fixMachine][job1]
-        i2, j2 = machineWithJobs[fixMachine][job2]
+"""
+    Fix a disjunctive edges with a given sequence of jobs on a given machine
+"""
+function fix_disjunctive_edges(sequence::Vector{Int}, machineWithJobs::Vector{Vector{Tuple{Int,Int}}}, jobToGraphNode::Vector{Vector{Int}}, graph::SimpleWeightedGraphAdj{Int, Int}, p::Vector{Vector{Int}}, machine::Int64, machineFixedEdges::Vector{Vector{Tuple{Int,Int}}})
+    for (job1, job2) in Iterators.zip(sequence, Iterators.drop(sequence, 1))
+        i1, j1 = machineWithJobs[machine][job1]
+        i2, j2 = machineWithJobs[machine][job2]
         add_edge!(graph, jobToGraphNode[i1][j1], jobToGraphNode[i2][j2], p[i1][j1])
-        push!(machineFixedEdges[fixMachine], (jobToGraphNode[i1][j1],jobToGraphNode[i2][j2]))
+        push!(machineFixedEdges[machine], (jobToGraphNode[i1][j1],jobToGraphNode[i2][j2]))
     end
 end
-
-function generateUtilArrays(n, m, n_i, μ)
+"""
+Returns util arrays for given instance.\\
+    Returns:\\
+    jobToGraphNode::Vector{Vector{Int}} - array of graph nodes for each job, i.e jobToGraphNode[i][j] is a graph node for job i and operation j\\
+    graphNodeToJob::Vector{Tuple{Int,Int}} - array of operations for each graph node, i.e graphNodeToJob[a]=(i,j) is a job and operation for graph node a\\
+    machineJobs::Vector{Vector{Tuple{Int,Int}}} - array of operations for each machine, i.e machineJobs[μ]=[(i1,j1), (i2, j2)] is a list of jobs for machine μ\\
+    machineWithJobs::Vector{Vector{Tuple{Int,Int}}} - array of operation for each machine and job, i.e machineWithJobs[μ][i]=(i,j) is a job and operation for machine μ and job i
+"""
+function generate_util_arrays(n, m, n_i, μ)
     jobToGraphNode::Vector{Vector{Int}} = [[0 for _ in 1:n_i[i]] for i in 1:n]
     graphNodeToJob::Vector{Tuple{Int,Int}} = [(0,0) for _ in 1:(sum(n_i) + 2)]
     machineJobs::Vector{Vector{Tuple{Int,Int}}} = [[] for _ in 1:m]
@@ -52,8 +69,10 @@ function generateUtilArrays(n, m, n_i, μ)
     return jobToGraphNode, graphNodeToJob, machineJobs, machineWithJobs
 end
 
-
-function generateConjuctiveGraph(n::Int, n_i::Vector{Int}, p::Vector{Vector{Int}}, jobToGraphNode::Vector{Vector{Int}})
+"""
+Returns a graph with only conjuctive edges
+"""
+function generate_conjuctive_graph(n::Int, n_i::Vector{Int}, p::Vector{Vector{Int}}, jobToGraphNode::Vector{Vector{Int}})
     graph = SimpleWeightedGraphAdj(sum(n_i)+2, Int)
     for i in 1:n
         add_edge!(graph, 1, jobToGraphNode[i][1], 0)
