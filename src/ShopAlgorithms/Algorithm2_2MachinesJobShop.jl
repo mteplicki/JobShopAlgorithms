@@ -4,7 +4,7 @@ algorithm2_2machinesjobshop(instance::JobShopInstance) = algorithm2_2machinesjob
     instance.n_i,
     instance.p,
     instance.μ,
-    [0 for i = 1:instance.n]
+    instance.d
 )
 
 function algorithm2_2machinesjobshop(
@@ -15,8 +15,8 @@ function algorithm2_2machinesjobshop(
     μ::Vector{Vector{Int}},
     d::Vector{Int}
 )::ShopSchedule
-    all(p .== 1) || throw(ArgumentError("jobs are not unit-length"))
-    m ≤ 2 || throw(ArgumentError("m must be less than or equal to 2"))
+    all(all(p_i .== 1) for p_i in p) || throw(ArgumentError("jobs are not unit-length"))
+    m <= 2 || throw(ArgumentError("m must be less than or equal to 2"))
     r = sum(n_i)
     A::OffsetVector{Union{Nothing,Tuple{Int64,Int64}},Vector{Union{Nothing,Tuple{Int64,Int64}}}} = OffsetArray([nothing for i = 0:r], -1)
     B::OffsetVector{Union{Nothing,Tuple{Int64,Int64}},Vector{Union{Nothing,Tuple{Int64,Int64}}}} = OffsetArray([nothing for i = 0:r], -1)
@@ -28,7 +28,7 @@ function algorithm2_2machinesjobshop(
     for i = 1:n
         if d[i] < r
             for j = 1:n_i[i]
-                push!(L[d[i]-n[i]+j], (i, j))
+                push!(L[d[i]-n_i[i]+j], (i, j))
             end
         else
             push!(Z, i)
@@ -38,21 +38,29 @@ function algorithm2_2machinesjobshop(
     T1 = Ref(0)
     T2 = Ref(0)
     for k = -r+1:r-1
-        while !empty(L[k])
+        while !isempty(L[k])
             O = popfirst!(L[k])
-            schedule_Oij(O, T1, T2, A, B, LAST, μ)
+            schedule_Oij(O, T1, T2, LAST, A, B, μ)
         end
     end
-    while !empty(Z)
+    while !isempty(Z)
         i = popfirst!(Z)
         for j = 1:n_i[i]
-            schedule_Oij((i, j), T1, T2, A, B, LAST, μ)
+            schedule_Oij((i, j), T1, T2, LAST, A, B, μ)
         end
     end
-    # do poprawy
+    C = [[0 for _ in 1:n_i[i] ] for i in 1:n]
+    for machine_schedule in [A, B]
+        for (time, operation) in enumerate(machine_schedule)
+            if operation !== nothing
+                i,j = operation
+                C[i][j] = time
+            end
+        end
+    end
     return ShopSchedule(
         JobShopInstance(n, m, n_i, p, μ),
-        [A[i] for i = 1:r],
+        C,
         maximum(LAST)
     )
 end

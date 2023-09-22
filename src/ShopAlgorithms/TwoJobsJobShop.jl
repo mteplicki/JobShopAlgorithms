@@ -1,5 +1,4 @@
 import DataStructures: insert!
-import Plots: plot, plot!
 
 @enum PointType begin
     NW
@@ -81,71 +80,6 @@ function two_jobs_job_shop(
         max(maximum(C[1]), maximum(C[2])))
 end
 
-
-
-function reconstructpath(
-    n_i::Vector{Int},
-    p::Vector{Vector{Int}},
-    obstacles::Vector{Obstacle},
-    points::OffsetVector{Point},
-    FNumber::Int64,
-    ONumber::Int64,
-    previous::Vector{Union{Nothing, Int}}
-)
-    path = Vector{Int64}()
-    current = FNumber
-    while current != 0
-        pushfirst!(path, current)
-        current = previous[current]
-    end
-    pushfirst!(path, 0)
-    t = [0, 0]
-    currentJob = [0, 0]
-    time = [Vector{Int64}(), Vector{Int64}()]
-
-    #TODO do poprawy nextObstacleNumber
-    for index in Iterators.take(eachindex(path), length(path)-1)
-        nextPointNumber = path[index+1]
-        nextPoint = points[nextPointNumber]
-        
-        if nextPoint.type == SE
-            nextObstacleNumber = points[nextPointNumber].obstacleNumber
-            nextObstacle = obstacles[nextObstacleNumber]
-            for job in (currentJob[1]+1):(nextObstacle.job1)
-                t[1] += p[1][job]
-                push!(time[1], t[1])
-            end
-            for job in (currentJob[2]+1):(nextObstacle.job2-1)
-                t[2] += p[2][job]
-                push!(time[2], t[2])
-            end
-            t[2] = t[1]
-        elseif nextPoint.type == NW
-            nextObstacleNumber = points[nextPointNumber].obstacleNumber
-            nextObstacle = obstacles[nextObstacleNumber]
-            for job in (currentJob[1]+1):(nextObstacle.job1-1)
-                t[1] += p[1][job]
-                push!(time[1], t[1])
-            end
-            for job in (currentJob[2]+1):(nextObstacle.job2)
-                t[2] += p[2][job]
-                push!(time[2], t[2])
-            end
-            t[1] = t[2]
-        else # F-type point
-            for job in (currentJob[1]+1):(n_i[1])
-                t[1] += p[1][job]
-                push!(time[1], t[1])
-            end
-            for job in (currentJob[2]+1):(n_i[2])
-                t[2] += p[2][job]
-                push!(time[2], t[2])
-            end
-        end
-    end
-    return time
-
-end
 function createpoints(
     n_i::Vector{Int},
     p::Vector{Vector{Int}},
@@ -225,60 +159,70 @@ function createnetwork(
     return network, points, ONumber
 end
 
-@enum LineType begin
-    Horizontal
-    Vertical
-    Diagonal
-end
-
-function plot_solution(solution::ShopSchedule)
-    rectangle(w, h, x, y) = Shape(x .+ [0,w,w,0], y .+ [0,0,h,h])
-    solution.instance.n == 2 || throw(ArgumentError("n must be equal to 2"))
-    a = [[0], [0]]
-    for (index, i) in enumerate(solution.instance.p)
-        for j in i
-            push!(a[index], a[index][end] + j)
-        end
+function reconstructpath(
+    n_i::Vector{Int},
+    p::Vector{Vector{Int}},
+    obstacles::Vector{Obstacle},
+    points::OffsetVector{Point},
+    FNumber::Int64,
+    ONumber::Int64,
+    previous::Vector{Union{Nothing, Int}}
+)
+    path = Vector{Int64}()
+    current = FNumber
+    while current != 0
+        pushfirst!(path, current)
+        current = previous[current]
     end
+    pushfirst!(path, 0)
+    t = [0, 0]
+    currentJob = [0, 0]
+    time = [Vector{Int64}(), Vector{Int64}()]
 
-    range1 = a[1][end]
-    range2 = a[2][end]
-    p = plot(xlims=(0,range1), ylims=(0,range2), aspect_ratio=:equal)
-    for i in 1:solution.instance.n_i[1]
-        for j in 1:solution.instance.n_i[2]
-            if solution.instance.μ[1][i] == solution.instance.μ[2][j]
-                x = a[1][i]
-                y = a[2][j]
-                w = solution.instance.p[1][i]
-                h = solution.instance.p[2][j]
-                plot!(p, rectangle(w, h, x, y), label="$(solution.instance.μ[1][i])")
+    #TODO do poprawy nextObstacleNumber
+    for index in Iterators.take(eachindex(path), length(path)-1)
+        nextPointNumber = path[index+1]
+        nextPoint = points[nextPointNumber]
+        
+        if nextPoint.type == SE
+            nextObstacleNumber = points[nextPointNumber].obstacleNumber
+            nextObstacle = obstacles[nextObstacleNumber]
+            for job in (currentJob[1]+1):(nextObstacle.job1)
+                t[1] += p[1][job]
+                push!(time[1], t[1])
+            end
+            for job in (currentJob[2]+1):(nextObstacle.job2-1)
+                t[2] += p[2][job]
+                push!(time[2], t[2])
+            end
+            t[2] = t[1]
+            currentJob[1] = nextObstacle.job1
+            currentJob[2] = nextObstacle.job2 - 1
+        elseif nextPoint.type == NW
+            nextObstacleNumber = points[nextPointNumber].obstacleNumber
+            nextObstacle = obstacles[nextObstacleNumber]
+            for job in (currentJob[1]+1):(nextObstacle.job1-1)
+                t[1] += p[1][job]
+                push!(time[1], t[1])
+            end
+            for job in (currentJob[2]+1):(nextObstacle.job2)
+                t[2] += p[2][job]
+                push!(time[2], t[2])
+            end
+            t[1] = t[2]
+            currentJob[1] = nextObstacle.job1 - 1
+            currentJob[2] = nextObstacle.job2
+        else # F-type point
+            for job in (currentJob[1]+1):(n_i[1])
+                t[1] += p[1][job]
+                push!(time[1], t[1])
+            end
+            for job in (currentJob[2]+1):(n_i[2])
+                t[2] += p[2][job]
+                push!(time[2], t[2])
             end
         end
     end
-    lastPosition = [0, 0]
-    startTime = solution.C .- solution.instance.p
+    return time
 
-    C1 = collect(zip(solution.C[1], [1 for i in 1:length(solution.C[1])]))
-    C2 = collect(zip(solution.C[2], [2 for i in 1:length(solution.C[1])]))
-    C = sort(vcat(C1, C2), by = x -> x[1])
-    time = 0
-    while !(isempty(C))
-        c, job = popfirst!(C)
-        progress = c - time
-        time = c
-        if isempty(startTime[2]) || startTime[2][1] >= time
-            plot!(p, [lastPosition[1], lastPosition[1] + progress], [lastPosition[2], lastPosition[2]], color=:red, label="")
-            lastPosition = [lastPosition[1] + progress, lastPosition[2]]
-        
-        elseif isempty(startTime[1]) || startTime[1][1] >= time
-            plot!(p, [lastPosition[1], lastPosition[1]], [lastPosition[2], lastPosition[2] + progress], color=:red, label="")
-            lastPosition = [lastPosition[1], lastPosition[2] + progress]
-        elseif startTime[1][1] < time && startTime[2][1] < time
-            plot!(p, [lastPosition[1], lastPosition[1] + progress], [lastPosition[2], lastPosition[2] + progress], color=:red, label="")
-            lastPosition = [lastPosition[1] + progress, lastPosition[2] + progress]
-        end
-        deleteat!(startTime[job], 1)
-    end
-    return p
 end
-

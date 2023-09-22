@@ -5,6 +5,7 @@ using  Test
 include("BranchAndBoundTest.jl")
 include("ShiftingBottleneckTests.jl")
 include("LoaderTests.jl")
+include("TwoJobsTest.jl")
 
 @testset verbose=true "basetests" begin
     @test 2 == 2

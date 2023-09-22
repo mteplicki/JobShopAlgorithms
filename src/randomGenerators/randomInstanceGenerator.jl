@@ -1,4 +1,3 @@
-using Random
 import Random: default_rng
 function random_instance_generator(n::Int64, m::Int64; n_i_random::Bool=false, pMin::Int=1, pMax::Int=10, rng=default_rng(), machineRepetition::Bool=false, n_i_min::Int=1, n_i_max::Int=10)::JobShopInstance
     n_i = Vector{Int64}(undef, n)

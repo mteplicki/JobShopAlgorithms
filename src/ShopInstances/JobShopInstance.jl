@@ -4,12 +4,14 @@ struct JobShopInstance <: AbstractShop
     n_i::Vector{Int}
     p::Vector{Vector{Int}}
     μ::Vector{Vector{Int}}
+    d::Vector{Int}
     function JobShopInstance(
         n::Int64,
         m::Int64,
         n_i::Vector{Int},
         p::Vector{Vector{Int}},
         μ::Vector{Vector{Int}};
+        d::Vector{Int}=zeros(Int64, n)
     )
         
         n ≥ 1 || throw(ArgumentError("n must be non-negative"))
@@ -21,8 +23,10 @@ struct JobShopInstance <: AbstractShop
         length(n_i) == n || throw(ArgumentError("length(n_i) must be equal to n"))
         all(length(p[i]) == n_i[i] for i in 1:n) || throw(ArgumentError("length(p[i]) must be equal to n_i[i]"))
         all(length(μ[i]) == n_i[i] for i in 1:n) || throw(ArgumentError("length(μ[i]) must be equal to n_i[i]"))
+        length(d) == n || throw(ArgumentError("length(d) must be equal to n"))
+        all(d .≥ 0) || throw(ArgumentError("d must be non-negative"))
 
-        new(n, m, n_i, p, μ)
+        new(n, m, n_i, p, μ, d)
     end
 end
 
