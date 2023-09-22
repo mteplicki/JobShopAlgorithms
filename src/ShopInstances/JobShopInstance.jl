@@ -1,3 +1,5 @@
+export JobShopInstance
+
 struct JobShopInstance <: AbstractShop
     n::Int64
     m::Int64

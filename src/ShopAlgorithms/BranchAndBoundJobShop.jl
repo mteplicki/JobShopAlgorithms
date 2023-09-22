@@ -1,3 +1,5 @@
+export generate_active_schedules
+
 mutable struct ActiveScheduleNode
     Ω::Vector{Tuple{Int,Int}}
     lowerBound::Union{Int64,Nothing}

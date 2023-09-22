@@ -1,3 +1,5 @@
+export JobShopInstanceBuilder, set_n_i!, set_p!
+
 struct JobShopInstanceBuilder
     n::Int64
     m::Int64

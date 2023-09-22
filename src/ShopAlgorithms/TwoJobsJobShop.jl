@@ -1,4 +1,5 @@
 import DataStructures: insert!
+export two_jobs_job_shop
 
 @enum PointType begin
     NW

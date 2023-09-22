@@ -1,3 +1,5 @@
+export JobShopFileSpecification, StandardSpecification, TaillardSpecification
+
 abstract type JobShopFileSpecification end
 
 struct StandardSpecification <: JobShopFileSpecification

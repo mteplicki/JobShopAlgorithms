@@ -1,3 +1,5 @@
+export shiftingbottleneck
+
 shiftingbottleneck(instance::JobShopInstance) = shiftingbottleneck(
     instance.n,
     instance.m,

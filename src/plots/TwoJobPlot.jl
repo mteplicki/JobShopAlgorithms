@@ -1,4 +1,6 @@
-function plot_solution(solution::ShopSchedule)
+export plot_geometric_approach, to_dataframe, gantt_chart
+
+function plot_geometric_approach(solution::ShopSchedule)
     rectangle(w, h, x, y, machine::String) = scatter(
         x=x .+ [0,w,w,0,0], 
         y=y .+ [0,0,h,h,0], 

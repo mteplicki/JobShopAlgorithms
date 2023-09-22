@@ -1,3 +1,5 @@
+export algorithm2_2machinesjobshop
+
 algorithm2_2machinesjobshop(instance::JobShopInstance) = algorithm2_2machinesjobshop(
     instance.n,
     instance.m,
