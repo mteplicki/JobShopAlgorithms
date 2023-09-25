@@ -1,6 +1,6 @@
-export algorithm2_2machinesjobshop
+export twomachinesjobshop
 
-algorithm2_2machinesjobshop(instance::JobShopInstance) = algorithm2_2machinesjobshop(
+twomachinesjobshop(instance::JobShopInstance) = twomachinesjobshop(
     instance.n,
     instance.m,
     instance.n_i,
@@ -9,7 +9,7 @@ algorithm2_2machinesjobshop(instance::JobShopInstance) = algorithm2_2machinesjob
     instance.d
 )
 
-function algorithm2_2machinesjobshop(
+function twomachinesjobshop(
     n::Int64,
     m::Int64,
     n_i::Vector{Int},

@@ -18,10 +18,11 @@ module ShopAlgorithms
     include("ShopAlgorithms/Utils.jl")
 
     include("ShopAlgorithms/SingleMachineReleaseLMax.jl")
-    include("ShopAlgorithms/Algorithm2_2MachinesJobShop.jl")
+    include("ShopAlgorithms/Algorithm2_TwoMachinesJobShop.jl")
     include("ShopAlgorithms/BranchAndBoundJobShop.jl")
     include("ShopAlgorithms/TwoJobsJobShop.jl")
     include("ShopAlgorithms/ShiftingBottleneck.jl")
+    include("ShopAlgorithms/TwoMachinesJobShop.jl")
 
     function test1()
         rng = MersenneTwister(1234567)
@@ -29,7 +30,7 @@ module ShopAlgorithms
         solution2 = generate_active_schedules(instance1)
         println(solution2)
         println(instance1)
-        solution = algorithm2_2machinesjobshop(instance1)
+        solution = twomachinesjobshop(instance1)
         println(solution)
         p = gantt_chart(solution)
         display(p) 
