@@ -25,15 +25,21 @@ module ShopAlgorithms
     include("ShopAlgorithms/TwoMachinesJobShop.jl")
 
     function test1()
-        rng = MersenneTwister(123453)
-        instance1 = random_instance_generator(2,4; rng=rng, job_recirculation=true, n_i=[40,40])
+        #bardzo zły przypadek 
+        # rng = MersenneTwister(123453)
+        # instance1 = random_instance_generator(2,4; rng=rng, job_recirculation=true, n_i=[40,40])
+
+        rng = MersenneTwister(22222222)
+        instance1 = random_instance_generator(2,2; rng=rng, job_recirculation=true, n_i=[8,8])
         solution = two_jobs_job_shop(instance1)
         println(instance1)
         println(solution)
-        display(gantt_chart(solution))
-        display(plot_geometric_approach(solution))
-        solution = generate_active_schedules(instance1)
-        println(solution)
+        # display(gantt_chart(solution))
+        
+        # solution = generate_active_schedules(instance1)
+        # println(solution)
+
+        # display(plot_geometric_approach(solution))
         # p = gantt_chart(solution)
         # display(p) 
         # r = [0, 10, 9, 18]

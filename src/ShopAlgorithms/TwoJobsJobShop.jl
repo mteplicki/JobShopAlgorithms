@@ -102,6 +102,9 @@ function createpoints(
         for k in 1:n_i[1]
             if μ[1][k] == μ[2][j]
                 obstacleCount += 1
+                # if obstacleCount == 28
+                #     println("tralala")
+                # end
                 NWpoint = Point(Coordinate(distanceFromOrigin[1][k] - p[1][k], distanceFromOrigin[2][j]), obstacleCount, pointCount, NW)
                 SEpoint = Point(Coordinate(distanceFromOrigin[1][k], distanceFromOrigin[2][j] - p[2][j]), obstacleCount, pointCount + 1, SE)
                 pointCount += 2
