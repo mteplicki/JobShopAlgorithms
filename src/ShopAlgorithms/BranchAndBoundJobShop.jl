@@ -21,7 +21,7 @@ function generate_active_schedules(
 
     # nonrepetitive
     # sprawdzamy, czy wszystkie operacje w danym zadaniu są wykonywane na różnych maszynach
-    all(sort(collect(Set(x))) == sort(x) for x in μ) || throw(ArgumentError("μ must be nonrepetitive"))
+    # all(sort(collect(Set(x))) == sort(x) for x in μ) || throw(ArgumentError("μ must be nonrepetitive"))
 
     # pomocnicze tablice
     jobToGraphNode, graphNodeToJob, machineJobs, _ = generate_util_arrays(n, m, n_i, μ)

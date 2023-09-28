@@ -16,7 +16,7 @@ function shiftingbottleneck(
     μ::Vector{Vector{Int}}
 )
     # nonrepetitive
-    all(sort(collect(Set(x))) == sort(x) for x in μ) || throw(ArgumentError("μ must be nonrepetitive"))
+    # all(sort(collect(Set(x))) == sort(x) for x in μ) || throw(ArgumentError("μ must be nonrepetitive"))
 
     jobToGraphNode, graphNodeToJob, machineJobs, machineWithJobs = generate_util_arrays(n, m, n_i, μ)
     machineFixedEdges::Vector{Vector{Tuple{Int,Int}}} = [[] for _ in 1:m]
@@ -31,7 +31,7 @@ function shiftingbottleneck(
     while M_0 ≠ M
         Lmax = typemin(Int64)
         k::Union{Int,Nothing} = nothing
-        sequence::Union{Vector{Int},Nothing} = nothing
+        sequence::Union{Vector{Tuple{Int,Int}},Nothing} = nothing
         for i in setdiff(M, M_0)
             LmaxCandidate, sequenceCandidate = generate_sequence(p, r, n_i, machineJobs, jobToGraphNode, graph, Cmax, i)
             if LmaxCandidate >= Lmax
@@ -42,7 +42,7 @@ function shiftingbottleneck(
         end
         M_0 = M_0 ∪ k
         Cmax += Lmax
-        fix_disjunctive_edges(sequence, machineWithJobs, jobToGraphNode, graph, p, k, machineFixedEdges)
+        fix_disjunctive_edges(sequence, jobToGraphNode, graph, p, k, machineFixedEdges)
         for fixMachine in setdiff(M_0, Set([k]))
             backUpGraph = deepcopy(graph)
             for (job1, job2) in machineFixedEdges[fixMachine]
@@ -57,7 +57,7 @@ function shiftingbottleneck(
             else
                 empty!(machineFixedEdges[fixMachine])
                 Cmax = LmaxCandidate + longestPath
-                fix_disjunctive_edges(sequenceCandidate, machineWithJobs, jobToGraphNode, graph, p, fixMachine, machineFixedEdges)
+                fix_disjunctive_edges(sequenceCandidate, jobToGraphNode, graph, p, fixMachine, machineFixedEdges)
             end
         end
         r, rGraph = generate_release_times(graph, n_i, graphNodeToJob)

@@ -1,17 +1,10 @@
 import Random: default_rng
 export random_instance_generator
 
-function random_instance_generator(n::Int64, m::Int64; n_i_random::Bool=false, pMin::Int=1, pMax::Int=10, rng=default_rng(), machineRepetition::Bool=false, n_i_min::Int=1, n_i_max::Int=10)::JobShopInstance
-    n_i = Vector{Int64}(undef, n)
+function random_instance_generator(n::Int64, m::Int64; n_i::Union{Vector{Int}, Nothing}=nothing, pMin::Int=1, pMax::Int=10, rng=default_rng(), job_recirculation::Bool=false)::JobShopInstance
+    n_i === nothing && (n_i = [m for _ in 1:n])
     p = Vector{Vector{Int64}}(undef, n)
     μ = Vector{Vector{Int64}}(undef, n)
-    if n_i_random
-        for i in 1:n
-            n_i[i] = rand(rng, n_i_min:n_i_max)
-        end
-    else
-        n_i .= m
-    end
     for i in 1:n
         machineSet = Set{Int64}(collect(1:m))
         p[i] = Vector{Int64}(undef, n_i[i])
@@ -20,7 +13,7 @@ function random_instance_generator(n::Int64, m::Int64; n_i_random::Bool=false, p
             p[i][j] = rand(rng, pMin:pMax)
             isempty(machineSet) && throw(ArgumentError("unable to generate instance with no machine repetition"))
             machine = rand(rng, machineSet)
-            if machineRepetition
+            if job_recirculation
                 μ[i][j] = machine
             else
                 μ[i][j] = machine

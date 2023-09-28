@@ -1,3 +1,4 @@
+# BEGIN: abpxx6d04wxr
 import Random: MersenneTwister
 import .ShopAlgorithms: two_jobs_job_shop, generate_active_schedules, random_instance_generator
 testsWithResults = [
@@ -13,4 +14,9 @@ rng = MersenneTwister(123456)
         instance = random_instance_generator(2,i; rng=rng, pMax = 3i, pMin = i)
         @test two_jobs_job_shop(instance).objectiveValue == generate_active_schedules(instance).objectiveValue
     end
+    @testset "TwoJobsTestWithRecirculation $i" for i in 3:2:11
+        instance = random_instance_generator(2,i; rng=rng, pMax = 3i, pMin = i, n_i=[2i,2i], job_recirculation=true)
+        @test two_jobs_job_shop(instance).objectiveValue == generate_active_schedules(instance).objectiveValue
+    end
 end
+# END: abpxx6d04wxr

@@ -19,8 +19,7 @@ end
 function single_machine_release_LMax(
     p::Vector{Int64},
     r::Vector{Int64},
-    d::Vector{Int64},
-    indices::Vector{Int64}=[i for i in 1:length(p)]
+    d::Vector{Int64}
 )
     # algorytm Branch and Bound
     upperBound = typemax(Int64)
@@ -68,7 +67,7 @@ function single_machine_release_LMax(
             end
         end
     end
-    return minNode.lowerBound, map(x -> indices[x.index], minNode.jobsOrdered)
+    return minNode.lowerBound, map(x -> x.index, minNode.jobsOrdered)
 end
 """
 Safe dequeue function. If queue is empty, returns nothing instead of throwing an error.
