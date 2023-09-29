@@ -125,9 +125,24 @@ function dpc_sequence(p::Vector{Int}, r::Vector{Int}, q::Vector{Int}, delay::Vec
     schrage_result = schrage(p, r, q, delay)
     path_with_Jc = critical_path_with_jc(schrage_result, p, r, q, delay)
     J_c = path_with_Jc.J_c
+    p = path_with_Jc.p
     node = DPCNode(r, q, p, delay, h(path_with_Jc.path, r, q, p))
     while J_c ≠ 0
-        delay1 = copy(node.delay)
+        if path_with_Jc.type == :artificial
+            delay1 = copy(node.delay)
+            delay1[J_c, p] = node.p[J_c]
+            delay2 = copy(node.delay)
+            for k in path_with_Jc.path
+                delay2[k, J_c] = node.p[k]
+            end
+            # update lower bound
+        else
+            q1 = copy(node.delay)
+            q1[J_c] = max(node.q[J_c], sum(j->p[j], path_with_Jc.path) + node.q[p])
+            r2 = copy(node.r)
+            r2[J_c] = max(node.r[J_c], minimum(j->r[j], path_with_Jc.path) + sum(j->p[j], path_with_Jc.path))
+            # update lower bound
+        end
         
     end
 
@@ -139,31 +154,35 @@ function critical_path_with_jc(schrage_result::NamedTuple, p::Vector{Int}, r::Ve
     Cmax = schrage_result.Cmax
     J_c = 0
     path_with_Jc::Union{Vector{Int},Nothing} = nothing
+    allPaths = [
+        collect(zip(schrage_result.real_paths, [:real for _ in eachindex(schrage_result.real_paths)]));
+        collect(zip(schrage_result.artificial_paths, [:artificial for _ in eachindex(schrage_result.artificial_paths)]))
+        ]
+    sort_by = x -> findfirst(==(x[1][end]), schrage_result.U)
+    sort!(allPaths, by = sort_by)
     path_type::Union{Symbol,Nothing} = nothing
-    while J_c == 0 && !isempty(schrage_result.artificial_paths)
-        path = pop!(schrage_result.artificial_paths)
-        p = path[end]
-        c = length(path) - 1
-        for job in Iterators.drop(Iterators.reverse(path), 1)
-            if delay[job, p] <= 0 && < Cmax - r[p] - p[p]
-                J_c = c
-                path_with_Jc = path[c+1:end]
-                path_type = :artificial
-                break
-            end
-            c -= 1
-        end
-    end
-    if J_c == 0
-        while J_c == 0 && !isempty(schrage_result.real_paths)
-            path = pop!(schrage_result.real_paths)
-            p = path[end]
-            c = length(path) - 1
+    while J_c == 0 && !isempty(allPaths)
+        path = pop!(allPaths)
+        if path[2] == :artificial
+            p = path[1][end]
+            c = length(path[1]) - 1
             for job in Iterators.drop(Iterators.reverse(path), 1)
-                if q[job] < q[p] 
-                    J_c = c
-                    # do poprawienia
+                if delay[job, p] <= 0 && q[job] + p[job] < Cmax - r[p] - p[p]
+                    J_c = job
                     path_with_Jc = path[c+1:end]
+                    path_type = :artificial
+                    break
+                end
+                c -= 1
+            end
+        else
+            p = path[end]
+            c = length(path[1]) - 1
+            for job in Iterators.drop(Iterators.reverse(path[1]), 1)
+                if q[job] < q[p] 
+                    J_c = job
+                    # do poprawienia
+                    path_with_Jc = path[1][c+1:end]
                     path_type = :real
                     break
                 end
@@ -171,7 +190,7 @@ function critical_path_with_jc(schrage_result::NamedTuple, p::Vector{Int}, r::Ve
             end
         end
     end
-    return (J_c=J_c, path=path_with_Jc, type=path_type)
+    return (J_c=J_c, p=path_with_Jc[end], path=path_with_Jc, type=path_type)
 end
 
 function test_schrage()
