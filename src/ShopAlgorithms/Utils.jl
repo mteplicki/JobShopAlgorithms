@@ -30,6 +30,26 @@ function generate_sequence(p::Vector{Vector{Int}}, r::Vector{Vector{Int}}, n_i::
     return Lmax, map(x -> machineJobs[i][x], sequence)
 end
 
+function generate_sequence_dpc(p::Vector{Vector{Int}}, r::Vector{Vector{Int}}, n_i::Vector{Int}, machineJobs::Vector{Vector{Tuple{Int,Int}}}, jobToGraphNode::Vector{Vector{Int}}, graph::SimpleWeightedGraphAdj{Int, Int}, Cmax::Int64, i::Int)
+    newP = [p[job[1]][job[2]] for job in machineJobs[i]]
+    newQ::Vector{Int} = []
+    newR = [r[job[1]][job[2]] for job in machineJobs[i]]
+    newDelay::Vector{Vector{Int}} = []
+    for job in machineJobs[i]
+        d = dag_paths(graph, jobToGraphNode[job[1]][job[2]], :longest)
+        push!(newQ, d[sum(n_i) + 2] - p[job[1]][job[2]])
+        push!(newDelay, [])
+        for job2 in machineJobs[i]
+            if job == job2
+                push!(newDelay[end], 0)
+            end
+            push!(newDelay[end], d[jobToGraphNode[job2[1]][job2[2]]])
+        end
+    end
+    Cmax, sequence = dpc_sequence(newP, newR, newQ, newDelay)
+
+end
+
 """
     Fix a disjunctive edges with a given sequence of jobs on a given machine
 """
@@ -82,3 +102,13 @@ function generate_conjuctive_graph(n::Int, n_i::Vector{Int}, p::Vector{Vector{In
     end
     return graph
 end
+
+"""
+Safe dequeue function. If queue is empty, returns nothing instead of throwing an error.
+"""
+dequeuesafe!(queue::PriorityQueue{K,V}) where {K,V} = isempty(queue) ? nothing : dequeue!(queue)
+
+"""
+Safe first function. If queue is empty, returns nothing instead of throwing an error.
+"""
+firstsafe(queue::PriorityQueue{K,V}) where {K,V} = isempty(queue) ? nothing : first(first(queue))

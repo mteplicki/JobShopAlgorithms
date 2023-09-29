@@ -19,8 +19,8 @@ function generate_active_schedules(
 )
     # algorytm Branch and Bound
 
-    # nonrepetitive
-    # sprawdzamy, czy wszystkie operacje w danym zadaniu są wykonywane na różnych maszynach
+    # sprawdzamy, czy wszystkie operacje w danym zadaniu są wykonywane na różnych maszynach - niekoniecznie, można
+    # rozluźnić ten warunek
     # all(sort(collect(Set(x))) == sort(x) for x in μ) || throw(ArgumentError("μ must be nonrepetitive"))
 
     # pomocnicze tablice
@@ -44,7 +44,6 @@ function generate_active_schedules(
     skippedNodes = 0
     terminalNodes = 0
     while !isempty(S)
-        # println("length: $(length(S)), upperBound: $upperBound, skippedNodes: $skippedNodes, terminalNodes: $terminalNodes")
         node = pop!(S)
         # jeżli wszystkie operacje zostały zaplanowane, to sprawdzamy, czy wartość tego węzła jest mniejsza niż obecna górna granica algorytmu
         if isempty(node.Ω)

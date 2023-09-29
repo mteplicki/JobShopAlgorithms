@@ -39,10 +39,22 @@ struct NetworkNode
     Successors::Vector{Successor}
 end
 
-struct LexicographicOrdering <: Base.Order.Ordering
+struct SweepOrdering <: Base.Order.Ordering
 end
 
-Base.Order.lt(::LexicographicOrdering, p1::Point, p2::Point) = p1.coordinate.y < p2.coordinate.y || (p1.coordinate.y == p2.coordinate.y && p1.coordinate.x < p2.coordinate.x)
+function Base.Order.lt(::SweepOrdering, p1::Point, p2::Point)
+    if p1.coordinate.y - p1.coordinate.x < p2.coordinate.y - p2.coordinate.x
+        return true
+    elseif p1.coordinate.y - p1.coordinate.x > p2.coordinate.y - p2.coordinate.x
+        return false
+    else
+        if p1.obstacleNumber < p2.obstacleNumber
+            return true
+        else
+            return false
+        end
+    end
+end
 
 two_jobs_job_shop(instance::JobShopInstance) = two_jobs_job_shop(
     instance.n,
@@ -60,10 +72,10 @@ function two_jobs_job_shop(
     μ::Vector{Vector{Int}},
 )
     n == 2 || throw(ArgumentError("n must be equal to 2"))
-    (points, obstacles, size) = createpoints(n_i, p, μ)
-    (network, _, ONumber) = createnetwork(points, obstacles, size)
-    d = OffsetArray([Int64(typemax(Int32)) for _ in 1:(length(points)+1)], -1)
-    previous::Vector{Union{Nothing, Int}} = [nothing for _ in 1:(length(points)+1)]
+    points, obstacles, size = createpoints(n_i, p, μ)
+    network, ONumber = createnetwork(points, obstacles)
+    d = OffsetArray([Int64(typemax(Int32)) for _ in 1:(length(points))], -1)
+    previous::Vector{Union{Nothing, Int}} = [nothing for _ in 1:(length(points)-1)]
     
     d[ONumber] = 0
     for node in network
@@ -74,7 +86,7 @@ function two_jobs_job_shop(
             end
         end
     end
-    C = reconstructpath(n_i, p, obstacles, points, length(points) - 1, ONumber, previous)
+    C = reconstructpath(n_i, p, obstacles, points, previous)
     return ShopSchedule(
         JobShopInstance(n, m, n_i, p, μ), 
         C,
@@ -102,9 +114,6 @@ function createpoints(
         for k in 1:n_i[1]
             if μ[1][k] == μ[2][j]
                 obstacleCount += 1
-                # if obstacleCount == 28
-                #     println("tralala")
-                # end
                 NWpoint = Point(Coordinate(distanceFromOrigin[1][k] - p[1][k], distanceFromOrigin[2][j]), obstacleCount, pointCount, NW)
                 SEpoint = Point(Coordinate(distanceFromOrigin[1][k], distanceFromOrigin[2][j] - p[2][j]), obstacleCount, pointCount + 1, SE)
                 pointCount += 2
@@ -115,7 +124,7 @@ function createpoints(
             end
         end
     end
-    Fpoint = Point(Coordinate(size[1], size[2]), nothing, length(points), F)
+    Fpoint = Point(Coordinate(size[1], size[2]), typemax(Int), length(points), F)
     push!(points, Fpoint)
     return points, obstacles, size
 end
@@ -127,14 +136,13 @@ end
 
 function createnetwork(
     pointsUnsorted::OffsetVector{Point},
-    obstacles::Vector{Obstacle},
-    size::Vector{Int},
+    obstacles::Vector{Obstacle}
 )
     network = OffsetVector([NetworkNode(Vector{Successor}()) for _ in 1:length(pointsUnsorted)], -1)
     
     S = SortedSet{Int}()
     Fpoint = pointsUnsorted[end]
-    points = sort(pointsUnsorted, alg=MergeSort, by=point -> point.coordinate.y - point.coordinate.x, rev=true)
+    points = sort(pointsUnsorted, alg=MergeSort, order=SweepOrdering(), rev=true)
     
     # create network
     ONumber = 0
@@ -160,7 +168,7 @@ function createnetwork(
             ONumber = point.pointNumber
         end
     end
-    return network, points, ONumber
+    return network, ONumber
 end
 
 function reconstructpath(
@@ -168,10 +176,9 @@ function reconstructpath(
     p::Vector{Vector{Int}},
     obstacles::Vector{Obstacle},
     points::OffsetVector{Point},
-    FNumber::Int64,
-    ONumber::Int64,
     previous::Vector{Union{Nothing, Int}}
 )
+    FNumber = length(points) - 1
     path = Vector{Int64}()
     current = FNumber
     while current != 0
@@ -183,7 +190,6 @@ function reconstructpath(
     currentJob = [0, 0]
     time = [Vector{Int64}(), Vector{Int64}()]
 
-    #TODO do poprawy nextObstacleNumber
     for index in Iterators.take(eachindex(path), length(path)-1)
         nextPointNumber = path[index+1]
         nextPoint = points[nextPointNumber]

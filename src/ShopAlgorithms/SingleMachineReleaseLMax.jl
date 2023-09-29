@@ -69,15 +69,7 @@ function single_machine_release_LMax(
     end
     return minNode.lowerBound, map(x -> x.index, minNode.jobsOrdered)
 end
-"""
-Safe dequeue function. If queue is empty, returns nothing instead of throwing an error.
-"""
-dequeuesafe!(queue::PriorityQueue{K,V}) where {K,V} = isempty(queue) ? nothing : dequeue!(queue)
 
-"""
-Safe first function. If queue is empty, returns nothing instead of throwing an error.
-"""
-firstsafe(queue::PriorityQueue{K,V}) where {K,V} = isempty(queue) ? nothing : first(first(queue))
 
 """
 1|R_j,pmtn|Lmax\\

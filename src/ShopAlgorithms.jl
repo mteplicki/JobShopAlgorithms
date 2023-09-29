@@ -17,31 +17,33 @@ module ShopAlgorithms
 
     include("ShopAlgorithms/Utils.jl")
 
+    include("ShopAlgorithms/dpc_algorithms.jl")
     include("ShopAlgorithms/SingleMachineReleaseLMax.jl")
+
     include("ShopAlgorithms/Algorithm2_TwoMachinesJobShop.jl")
     include("ShopAlgorithms/BranchAndBoundJobShop.jl")
     include("ShopAlgorithms/TwoJobsJobShop.jl")
     include("ShopAlgorithms/ShiftingBottleneck.jl")
     include("ShopAlgorithms/TwoMachinesJobShop.jl")
+    include("ShopAlgorithms/ShiftingBottleneckDPC.jl")
 
     function test1()
         #bardzo zły przypadek 
-        # rng = MersenneTwister(123453)
-        # instance1 = random_instance_generator(2,4; rng=rng, job_recirculation=true, n_i=[40,40])
+        rng = MersenneTwister(1234531)
+        instance1 = random_instance_generator(5,2; rng=rng, job_recirculation=true, n_i=[6 for _ in 1:5], machine_repetition=true)
 
-        rng = MersenneTwister(22222222)
-        instance1 = random_instance_generator(2,2; rng=rng, job_recirculation=true, n_i=[8,8])
-        solution = two_jobs_job_shop(instance1)
         println(instance1)
-        println(solution)
-        # display(gantt_chart(solution))
+        solution1 = algorithm2_two_machines_job_shop(instance1)
+        println(solution1)
         
-        # solution = generate_active_schedules(instance1)
-        # println(solution)
+        
+        
+        solution2 = generate_active_schedules(instance1)
+        println(solution2)
+        display(gantt_chart(solution1))
 
-        # display(plot_geometric_approach(solution))
-        # p = gantt_chart(solution)
-        # display(p) 
+        p = gantt_chart(solution2)
+        display(p) 
         # r = [0, 10, 9, 18]
         # p = [8, 8, 7, 4]
         # d = [8, 18, 19, 22]
