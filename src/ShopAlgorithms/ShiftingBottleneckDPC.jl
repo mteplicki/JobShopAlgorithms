@@ -57,7 +57,11 @@ function shiftingbottleneckdpc(
                 empty!(machineFixedEdges[fixMachine])
                 Cmax = Cmaxcandidate
                 fix_disjunctive_edges(sequenceCandidate, jobToGraphNode, graph, p, fixMachine, machineFixedEdges)
+                
             end
+            # r, rGraph = generate_release_times(graph, n_i, graphNodeToJob)
+            # longestPath = rGraph[sum(n_i)+2]
+            # println("longestPath = $longestPath, Cmax = $Cmaxcandidate")
         end
         r, rGraph = generate_release_times(graph, n_i, graphNodeToJob)
     end

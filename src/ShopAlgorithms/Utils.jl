@@ -34,19 +34,16 @@ function generate_sequence_dpc(p::Vector{Vector{Int}}, r::Vector{Vector{Int}}, n
     newP = [p[job[1]][job[2]] for job in machineJobs[i]]
     newQ::Vector{Int} = []
     newR = [r[job[1]][job[2]] for job in machineJobs[i]]
-    newDelay::Vector{Vector{Int}} = []
-    for job in machineJobs[i]
+    newDelay::Matrix{Int} = [0 for _ in 1:length(machineJobs[i]), _ in 1:length(machineJobs[i])]
+    for (a, job) in enumerate(machineJobs[i])
         d = dag_paths(graph, jobToGraphNode[job[1]][job[2]], :longest)
         push!(newQ, d[sum(n_i) + 2] - p[job[1]][job[2]])
-        push!(newDelay, [])
-        for job2 in machineJobs[i]
-            if job == job2
-                push!(newDelay[end], 0)
-            end
-            push!(newDelay[end], d[jobToGraphNode[job2[1]][job2[2]]])
+        for (b, job2) in enumerate(machineJobs[i])
+            newDelay[a, b] = d[jobToGraphNode[job2[1]][job2[2]]]
         end
     end
     Cmax, sequence = dpc_sequence(newP, newR, newQ, newDelay)
+    return Cmax, map(x -> machineJobs[i][x], sequence)
 
 end
 

@@ -48,11 +48,8 @@ module ShopAlgorithms
         # p = [8, 8, 7, 4]
         # d = [8, 18, 19, 22]
         # println(single_machine_release_LMax(p,r,d))
-        filename = "test/instances/test3.txt"
-        result = shiftingbottleneck(open(x->read(x, StandardSpecification), filename))
+        result = shiftingbottleneck(open(x->read(x, StandardSpecification), "test/instances/test1.txt"))
         println(result)
-        resultdpc = shiftingbottleneckdpc(open(x->read(x, StandardSpecification), filename))
-        println(resultdpc)
         # display(gantt_chart(result))
 
 
