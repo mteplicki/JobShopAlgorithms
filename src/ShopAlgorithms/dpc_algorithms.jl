@@ -64,19 +64,6 @@ function schrage(p::Vector{Int}, r::Vector{Int}, q::Vector{Int}, delay::Matrix{I
         jobs = collect(otherJobs)
         jobsLessThanT = filter(job -> r_prim[job] <= t, jobs)
         scheduleJob = jobsLessThanT[findmax(job -> q[job], jobsLessThanT)[2]]
-        # while firstsafe(rQueue) !== nothing && r_prim[firstsafe(rQueue)] <= t
-        #     jobToAdd = dequeue!(rQueue)
-        #     enqueue!(qQueue, jobToAdd => q[jobToAdd])
-        # end
-        # if isempty(qQueue)
-        #     println("break")
-        # end
-        # scheduleJob = dequeue!(qQueue)
-        # while r_prim[scheduleJob] > t
-        #     enqueue!(rQueue, scheduleJob => r_prim[scheduleJob])
-        #     scheduleJob = dequeue!(qQueue)
-        # end
-        # println("scheduleJob = $scheduleJob, scheduleJob2 = $scheduleJob2, jobsLessThanT = $jobsLessThanT, xd: $(findmax(job -> q[job], jobsLessThanT))")
         push!(U, scheduleJob)
         delete!(otherJobs, scheduleJob)
         S[scheduleJob] = t
@@ -162,7 +149,6 @@ function dpc_sequence(p::Vector{Int}, r::Vector{Int}, q::Vector{Int}, delay::Mat
     bestResult = schrage_result
     while J_c ≠ 0
         if path_with_Jc.type == :artificial
-            #println("artificial")
             node1 = deepcopy(node)
             node1.delay[J_c, P] = node1.p[J_c]
             modifiedDelay1 = [(J_c, P)]
@@ -180,7 +166,6 @@ function dpc_sequence(p::Vector{Int}, r::Vector{Int}, q::Vector{Int}, delay::Mat
             test_feasibility(node2.p, node2.r, node2.q, node2.delay) || throw(ArgumentError("node2 is not feasible"))
             node2.lowerBound < F && enqueue!(N, node2, node2.lowerBound)
         else
-            #println("real")
             node1 = deepcopy(node)
             node1.q[J_c] = max(node1.q[J_c], sum(j->node1.p[j], path_with_Jc.J) + node1.q[P])
             modifiedQ1 = [J_c]
@@ -205,7 +190,6 @@ function dpc_sequence(p::Vector{Int}, r::Vector{Int}, q::Vector{Int}, delay::Mat
             P = path_with_Jc.p
             f_γ = node.lowerBound
             f = max(f_γ, h(path_with_Jc.J, node.r, node.q, node.p))
-            # println("length(N)=$(length(N)), F=$F, f_γ=$f_γ, f=$f, J_c=$J_c, J=$(path_with_Jc.J) result=$(schrage_result.U)")
             if schrage_result.U == [8, 9, 5, 6, 1, 7, 10, 2, 3, 4] && F == 972
             end
             if schrage_result.Cmax < F
