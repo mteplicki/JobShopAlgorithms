@@ -28,11 +28,13 @@ module ShopAlgorithms
     include("ShopAlgorithms/ShiftingBottleneckDPC.jl")
 
     function test1()
-        filename = "test/instances/test3.txt"
-        result = shiftingbottleneck(open(x->read(x, StandardSpecification), filename))
-        println(result)
-        resultdpc = shiftingbottleneckdpc(open(x->read(x, StandardSpecification), filename))
-        println(resultdpc)
+        for x in 3:2:11
+            rng = MersenneTwister(123)
+            instance = random_instance_generator(x,x; rng=rng, pMax = 3x, pMin = x, n_i=fill(x, x), job_recirculation=true)
+            println(instance)
+            # println(shiftingbottleneck(instance)) 
+            println(shiftingbottleneckdpc(instance))
+        end
     end
-    # test1()
+    test1()
 end # module JobShopAlgorithms

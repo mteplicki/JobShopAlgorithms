@@ -164,7 +164,7 @@ function createnetwork(
         if point.type == F
             continue
         end
-        (_, currentToken) = insert!(S, point.obstacleNumber) # dziwne
+        (_, currentToken) = insert!(S, point.obstacleNumber) 
         advanceToken = advance((S, currentToken))
         startingObstacle = point.pointNumber
         if status((S,advanceToken)) == 3 # 3 - to jest token na końcu

@@ -14,5 +14,6 @@ end
 @testset "ShiftingBottleneckTestsRecirculationTricky" verbose = true for x in 3:2:11
     rng = MersenneTwister(123)
     instance = random_instance_generator(x,x; rng=rng, pMax = 3x, pMin = x, n_i=fill(x, x), job_recirculation=true)
-    @test (shiftingbottleneck(instance);true) skip = true
+    @test (shiftingbottleneck(instance);true) 
+    @test (shiftingbottleneckdpc(instance);true)
 end

@@ -1,14 +1,14 @@
-# using DataStructures
+using DataStructures
 
-# """
-# Safe dequeue function. If queue is empty, returns nothing instead of throwing an error.
-# """
-# dequeuesafe!(queue::PriorityQueue{K,V}) where {K,V} = isempty(queue) ? nothing : dequeue!(queue)
+"""
+Safe dequeue function. If queue is empty, returns nothing instead of throwing an error.
+"""
+dequeuesafe!(queue::PriorityQueue{K,V}) where {K,V} = isempty(queue) ? nothing : dequeue!(queue)
 
-# """
-# Safe first function. If queue is empty, returns nothing instead of throwing an error.
-# """
-# firstsafe(queue::PriorityQueue{K,V}) where {K,V} = isempty(queue) ? nothing : first(first(queue))
+"""
+Safe first function. If queue is empty, returns nothing instead of throwing an error.
+"""
+firstsafe(queue::PriorityQueue{K,V}) where {K,V} = isempty(queue) ? nothing : first(first(queue))
 
 mutable struct DPCNode
     r::Vector{Int}
@@ -135,9 +135,19 @@ end
 
 h(J::Vector{Int}, r::Vector{Int}, q::Vector{Int}, p::Vector{Int}) = minimum(j->r[j], J) + sum(j->p[j], J) + minimum(j->q[j], J)
 
+function objective(schedule::Vector, p, r, q)
+    S = [0 for _ in 1:length(p)+1]
+    S[schedule[1]] = r[schedule[1]]
+    for (job1, job2) in Iterators.zip(schedule, Iterators.drop(schedule, 1))
+        S[job2] = max(S[job1] + p[job1], r[job2])
+    end
+    return maximum(S[job] + p[job] + q[job] for job in schedule)
+end
+
 function dpc_sequence(p::Vector{Int}, r::Vector{Int}, q::Vector{Int}, delay::Matrix{Int})
     bestResult::Union{SchrageResult,Nothing} = nothing
     N = PriorityQueue{DPCNode, Int}()
+    map!(x->max(0,x), delay, delay)
 
     schrage_result::SchrageResult = schrage(p, r, q, delay)
     path_with_Jc::PathWithJc = critical_path_with_jc(schrage_result, p, r, q, delay)
@@ -149,6 +159,8 @@ function dpc_sequence(p::Vector{Int}, r::Vector{Int}, q::Vector{Int}, delay::Mat
     bestResult = schrage_result
     while J_c ≠ 0
         if path_with_Jc.type == :artificial
+            #println("artificial")
+            # J_c before J_P
             node1 = deepcopy(node)
             node1.delay[J_c, P] = node1.p[J_c]
             modifiedDelay1 = [(J_c, P)]
@@ -156,6 +168,7 @@ function dpc_sequence(p::Vector{Int}, r::Vector{Int}, q::Vector{Int}, delay::Mat
             test_feasibility(node1.p, node1.r, node1.q, node1.delay) || throw(ArgumentError("node1 is not feasible"))
             node1.lowerBound < F && enqueue!(N, node1, node1.lowerBound)
 
+            # J_c after all jobs of J
             node2 = deepcopy(node)
             modifiedDelay2 = NTuple{2,Int}[]
             for k in path_with_Jc.J
@@ -165,18 +178,35 @@ function dpc_sequence(p::Vector{Int}, r::Vector{Int}, q::Vector{Int}, delay::Mat
             update_node!(node2, path_with_Jc, f; modifiedDelay=modifiedDelay2)
             test_feasibility(node2.p, node2.r, node2.q, node2.delay) || throw(ArgumentError("node2 is not feasible"))
             node2.lowerBound < F && enqueue!(N, node2, node2.lowerBound)
-        else
+        else # real path
+            #println("real")
+            #before all jobs of J
             node1 = deepcopy(node)
             node1.q[J_c] = max(node1.q[J_c], sum(j->node1.p[j], path_with_Jc.J) + node1.q[P])
             modifiedQ1 = [J_c]
-            update_node!(node1, path_with_Jc, f; modifiedQ=modifiedQ1)
+
+            modifiedDelay1 = NTuple{2,Int}[]
+            for k in path_with_Jc.J
+                node1.delay[J_c, k] = node1.p[J_c]
+                push!(modifiedDelay1, (J_c, k))
+            end
+            update_node!(node1, path_with_Jc, f; modifiedQ=modifiedQ1, modifiedDelay=modifiedDelay1)
+
             test_feasibility(node1.p, node1.r, node1.q, node1.delay) || throw(ArgumentError("node1 is not feasible"))
             node1.lowerBound < F && enqueue!(N, node1, node1.lowerBound)
 
+            # after all job in J
             node2 = deepcopy(node)
             node2.r[J_c] = max(node2.r[J_c], minimum(j->node2.r[j], path_with_Jc.J) + sum(j->node2.p[j], path_with_Jc.J))
             modifiedR2 = [J_c]
-            update_node!(node2, path_with_Jc, f; modifiedR=modifiedR2)
+
+            modifiedDelay2 = NTuple{2,Int}[]
+            for k in path_with_Jc.J
+                node2.delay[k, J_c] = node2.p[k]
+                push!(modifiedDelay2, (k, J_c))
+            end
+            update_node!(node2, path_with_Jc, f; modifiedR=modifiedR2, modifiedDelay=modifiedDelay2)
+
             test_feasibility(node2.p, node2.r, node2.q, node2.delay) || throw(ArgumentError("node2 is not feasible"))
             node2.lowerBound < F && enqueue!(N, node2, node2.lowerBound)
         end
@@ -190,9 +220,8 @@ function dpc_sequence(p::Vector{Int}, r::Vector{Int}, q::Vector{Int}, delay::Mat
             P = path_with_Jc.p
             f_γ = node.lowerBound
             f = max(f_γ, h(path_with_Jc.J, node.r, node.q, node.p))
-            if schrage_result.U == [8, 9, 5, 6, 1, 7, 10, 2, 3, 4] && F == 972
-            end
-            if schrage_result.Cmax < F
+            println("f_γ=$f_γ, f=$f, F=$F, J_c=$J_c, J=$(path_with_Jc.J), P=$P, result=$(schrage_result.U), Cmax=$(schrage_result.Cmax), type=$(path_with_Jc.type)")
+            if schrage_result.Cmax <= F
                 bestResult = schrage_result
                 F = schrage_result.Cmax
                 if path_with_Jc.type == :last 
@@ -293,7 +322,7 @@ function critical_path_with_jc(schrage_result::SchrageResult, p::Vector{Int}, r:
     J::Union{Vector{Int},Nothing} = nothing
     allPaths = [schrage_result.real_paths; schrage_result.artificial_paths]
     sort_by = x -> findfirst(==(x.J[end]), schrage_result.U)
-    sort!(allPaths, by = sort_by, rev = true)
+    sort!(allPaths, by = sort_by)
     path_type::Union{Symbol,Nothing} = nothing
     while J_c == 0 && !isempty(allPaths)
         path = popfirst!(allPaths)
@@ -332,61 +361,61 @@ end
 
 
 function test_schrage()
-    # r = [0, 2, 5, 8, 10, 15]
-    # p = [4, 4, 2, 1, 3, 2]
-    # q = [9, 10, 13, 6, 7, 6]
-    # delay = [0 for _ in 1:6, _ in 1:6]
-    # delay[3,5] = 5
-    # println(dpc_sequence(p, r, q, delay))
-    # 23
+    r = [0, 2, 5, 8, 10, 15]
+    p = [4, 4, 2, 1, 3, 2]
+    q = [9, 10, 13, 6, 7, 6]
+    delay = [0 for _ in 1:6, _ in 1:6]
+    delay[3,5] = 5
+    println(dpc_sequence(p, r, q, delay))
+    23
 
-    # r = [3,0]
-    # p = [1,1]
-    # q = [0,3]
-    # delay = [0 0; 0 0]
-    # delay[2,1] = 3
-    # println(dpc_sequence(p, r, q, delay))
-    # 4
+    r = [3,0]
+    p = [1,1]
+    q = [0,3]
+    delay = [0 0; 0 0]
+    delay[2,1] = 3
+    println(dpc_sequence(p, r, q, delay))
+    4
 
-    # r = [614, 594, 460, 612, 309, 442, 583, 287, 317, 615]
-    # p = [11, 46, 10, 43, 61, 52, 21, 74, 51, 47]
-    # q = [290, 142, 414, 0, 429, 358, 293, 451, 538, 212]
-    # delay = [typemin(Int) for _ in 1:10, _ in 1:10]
-    # for i in 1:10
-    #     delay[i,i] = 0
-    # end
-    # println(dpc_sequence(p, r, q, delay))
-    # 932
+    r = [614, 594, 460, 612, 309, 442, 583, 287, 317, 615]
+    p = [11, 46, 10, 43, 61, 52, 21, 74, 51, 47]
+    q = [290, 142, 414, 0, 429, 358, 293, 451, 538, 212]
+    delay = [typemin(Int) for _ in 1:10, _ in 1:10]
+    for i in 1:10
+        delay[i,i] = 0
+    end
+    println(dpc_sequence(p, r, q, delay))
+    932
 
-    # r = [35, 54, 5, 39, 57, 11]
-    # p = [7, 4, 4, 3, 1, 3]
-    # q = [9, 0, 51, 18, 0, 33]
-    # delay = [0 for _ in 1:6, _ in 1:6]
-    # delay[3,1] = 30
-    # delay[3,2] = 49
-    # delay[6,2] = 32
-    # delay[3,4] = 34
-    # delay[3,5] = 52
-    # delay[6,5] = 35
-    # println(dpc_sequence(p, r, q, delay))
-    # 60
+    r = [35, 54, 5, 39, 57, 11]
+    p = [7, 4, 4, 3, 1, 3]
+    q = [9, 0, 51, 18, 0, 33]
+    delay = [0 for _ in 1:6, _ in 1:6]
+    delay[3,1] = 30
+    delay[3,2] = 49
+    delay[6,2] = 32
+    delay[3,4] = 34
+    delay[3,5] = 52
+    delay[6,5] = 35
+    println(dpc_sequence(p, r, q, delay))
+    60
 
-    # p = [9, 90, 74, 95, 14, 84, 13, 31, 85, 61]
-    # q = [386, 417, 376, 730, 736, 560, 346, 822, 416, 381]
-    # r = [520, 375, 371, 81, 0, 0, 502, 0, 368, 455]
-    # delay = [0 for _ in 1:10, _ in 1:10]
-    # delay[:,1] = [0, -9223372036854775288, -9223372036854775288, 401, 326, 249, -9223372036854775288, 429, -9223372036854775288, -9223372036854775288]
-    # delay[:,2] = [-9223372036854775433, 0, -9223372036854775433, 294, 219, -9223372036854775433, -9223372036854775433, 322, -9223372036854775433, -9223372036854775433]
-    # delay[:,3] = [-9223372036854775437, -9223372036854775437, 0, 290, 215, -9223372036854775437, -9223372036854775437, 318, -9223372036854775437, -9223372036854775437]
-    # delay[:,4] = [-9223372036854775727, -9223372036854775727, -9223372036854775727, 0, -9223372036854775727, -9223372036854775727, -9223372036854775727, -9223372036854775727, -9223372036854775727, -9223372036854775727]
-    # delay[:,5] = [-9223372036854775727, -9223372036854775727, -9223372036854775727, 0, -9223372036854775727, -9223372036854775727, -9223372036854775727, -9223372036854775727, -9223372036854775727, -9223372036854775727]
-    # delay[:,6] = [-9223372036854775808, -9223372036854775808, -9223372036854775808, -9223372036854775808, -9223372036854775808, 0, -9223372036854775808, -9223372036854775808, -9223372036854775808, -9223372036854775808]
-    # delay[:,7] = [-9223372036854775306, -9223372036854775306, -9223372036854775306, 421, 346, -9223372036854775306, 0, 449, -9223372036854775306, -9223372036854775306]
-    # delay[:,8] = [-9223372036854775808, -9223372036854775808, -9223372036854775808, -9223372036854775808, -9223372036854775808, -9223372036854775808, -9223372036854775808, 0, -9223372036854775808, -9223372036854775808]
-    # delay[:,9] = [-9223372036854775440, -9223372036854775440, -9223372036854775440, -9223372036854775440, -9223372036854775440, -9223372036854775440, -9223372036854775440, -9223372036854775440, 0, -9223372036854775440]
-    # delay[:,10] = [-9223372036854775353, -9223372036854775353, -9223372036854775353, 373, 298, 184, -9223372036854775353, 401, -9223372036854775353, 0]
-    # println(dpc_sequence(p, r, q, delay))
-    # 1063
+    p = [9, 90, 74, 95, 14, 84, 13, 31, 85, 61]
+    q = [386, 417, 376, 730, 736, 560, 346, 822, 416, 381]
+    r = [520, 375, 371, 81, 0, 0, 502, 0, 368, 455]
+    delay = [0 for _ in 1:10, _ in 1:10]
+    delay[:,1] = [0, -9223372036854775288, -9223372036854775288, 401, 326, 249, -9223372036854775288, 429, -9223372036854775288, -9223372036854775288]
+    delay[:,2] = [-9223372036854775433, 0, -9223372036854775433, 294, 219, -9223372036854775433, -9223372036854775433, 322, -9223372036854775433, -9223372036854775433]
+    delay[:,3] = [-9223372036854775437, -9223372036854775437, 0, 290, 215, -9223372036854775437, -9223372036854775437, 318, -9223372036854775437, -9223372036854775437]
+    delay[:,4] = [-9223372036854775727, -9223372036854775727, -9223372036854775727, 0, -9223372036854775727, -9223372036854775727, -9223372036854775727, -9223372036854775727, -9223372036854775727, -9223372036854775727]
+    delay[:,5] = [-9223372036854775727, -9223372036854775727, -9223372036854775727, 0, -9223372036854775727, -9223372036854775727, -9223372036854775727, -9223372036854775727, -9223372036854775727, -9223372036854775727]
+    delay[:,6] = [-9223372036854775808, -9223372036854775808, -9223372036854775808, -9223372036854775808, -9223372036854775808, 0, -9223372036854775808, -9223372036854775808, -9223372036854775808, -9223372036854775808]
+    delay[:,7] = [-9223372036854775306, -9223372036854775306, -9223372036854775306, 421, 346, -9223372036854775306, 0, 449, -9223372036854775306, -9223372036854775306]
+    delay[:,8] = [-9223372036854775808, -9223372036854775808, -9223372036854775808, -9223372036854775808, -9223372036854775808, -9223372036854775808, -9223372036854775808, 0, -9223372036854775808, -9223372036854775808]
+    delay[:,9] = [-9223372036854775440, -9223372036854775440, -9223372036854775440, -9223372036854775440, -9223372036854775440, -9223372036854775440, -9223372036854775440, -9223372036854775440, 0, -9223372036854775440]
+    delay[:,10] = [-9223372036854775353, -9223372036854775353, -9223372036854775353, 373, 298, 184, -9223372036854775353, 401, -9223372036854775353, 0]
+    println(dpc_sequence(p, r, q, delay))
+    1063
 
     p = [11, 46, 10, 43, 61, 52, 21, 74, 51, 47]
     r = [614, 681, 697, 707, 172, 311, 648, 218, 226, 683]
@@ -402,8 +431,16 @@ function test_schrage()
     delay[:,8] = [-9223372036854775590, -9223372036854775590, -9223372036854775590, -9223372036854775590, -9223372036854775590, -9223372036854775590, -9223372036854775590, 0, -9223372036854775590, -9223372036854775590]
     delay[:,9] = [-9223372036854775582, -9223372036854775582, -9223372036854775582, -9223372036854775582, -9223372036854775582, -9223372036854775582, -9223372036854775582, -9223372036854775582, 0, -9223372036854775582]
     delay[:,10] = [-9223372036854775125, -9223372036854775125, -9223372036854775125, -9223372036854775125, 384, 335, -9223372036854775125, 401, 434, 0]
+    println(test_feasibility(p, r, q, delay))
     println(dpc_sequence(p, r, q, delay))
     972
+
+    p = [15, 11, 14, 9, 12, 9, 10]
+    r = [0, 44, 15, 7, 15, 33, 12]
+    q = [40, 0, 26, 25, 22, 7, 31]
+    delay = [0 44 -9223372036854775793 -9223372036854775801 -9223372036854775793 -9223372036854775775 -9223372036854775796; -9223372036854775808 0 -9223372036854775793 -9223372036854775801 -9223372036854775793 -9223372036854775775 -9223372036854775796; -9223372036854775808 -9223372036854775764 0 -9223372036854775801 -9223372036854775793 -9223372036854775775 -9223372036854775796; -9223372036854775808 -9223372036854775764 -9223372036854775793 0 -9223372036854775793 -9223372036854775775 -9223372036854775796; -9223372036854775808 -9223372036854775764 -9223372036854775793 -9223372036854775801 0 18 -9223372036854775796; -9223372036854775808 -9223372036854775764 -9223372036854775793 -9223372036854775801 -9223372036854775793 0 -9223372036854775796; -9223372036854775808 -9223372036854775764 -9223372036854775793 -9223372036854775801 -9223372036854775793 -9223372036854775775 0]
+    println(dpc_sequence(p, r, q, delay))
+    85
 end
 
 # test_schrage()

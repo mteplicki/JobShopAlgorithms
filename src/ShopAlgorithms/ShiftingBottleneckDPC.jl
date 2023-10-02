@@ -47,9 +47,11 @@ function shiftingbottleneckdpc(
         Cmax = typemin(Int64)
         k::Union{Int,Nothing} = nothing
         sequence::Union{Vector{Tuple{Int,Int}},Nothing} = nothing
+        
         # dla każdej maszyny, dla której nie ustalono jeszcze krawędzi disjunktywnych
         # wybierz tę, dla której algorytm 1 | r_j | Lmax wskaże najdłuższy czas wykonania (Bottleneck)
         for i in setdiff(M, M_0)
+            # println("M_0: $M_0, i: $i")
             CmaxCandidate, sequenceCandidate = generate_sequence_dpc(p, r, n_i, machineJobs, jobToGraphNode, graph, Cmax, i)
             if CmaxCandidate >= Cmax
                 Cmax = CmaxCandidate

@@ -33,7 +33,7 @@ function shiftingbottleneck(
     μ::Vector{Vector{Int}}
 )
     # nonrepetitive
-    all(sort(collect(Set(x))) == sort(x) for x in μ) || throw(ArgumentError("μ must be nonrepetitive"))
+    # all(sort(collect(Set(x))) == sort(x) for x in μ) || throw(ArgumentError("μ must be nonrepetitive"))
 
     # generujemy pomocnicze tablice
     jobToGraphNode, graphNodeToJob, machineJobs, machineWithJobs = generate_util_arrays(n, m, n_i, μ)
