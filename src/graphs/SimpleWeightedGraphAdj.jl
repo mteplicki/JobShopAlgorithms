@@ -3,12 +3,40 @@ import Base.getindex
 import Graphs: add_edge!, rem_edge!, AbstractGraph, AbstractEdge, has_edge, has_vertex, add_vertex!
 export SimpleWeightedGraphAdj, SimpleWeightedEdge
 
+"""
+    mutable struct SimpleWeightedEdge{T<:Integer, U<:Real} <: AbstractEdge{T}
+
+SimpleWeightedEdge is a mutable struct that represents a weighted edge in a graph. It contains the source vertex, destination vertex, and weight of the edge.
+
+# Arguments
+- `src::T`: The source vertex of the edge.
+- `dst::T`: The destination vertex of the edge.
+- `weight::U`: The weight of the edge.
+
+# Type parameters
+- `T<:Integer`: The type of the vertices.
+- `U<:Real`: The type of the weight.
+
+"""
 mutable struct SimpleWeightedEdge{T<:Integer, U<:Real} <: AbstractEdge{T}
     src::T
     dst::T
     weight::U
 end
 
+"""
+    SimpleWeightedGraphAdj{T<:Integer, U<:Real}
+
+A simple weighted graph implementation using an adjacency list representation.
+
+# Fields
+- `vertices::Vector{T}`: A vector of vertices of type `T`.
+- `edges::Vector{Vector{SimpleWeightedEdge{T,U}}}`: A vector of edges represented as a vector of `SimpleWeightedEdge{T,U}`.
+
+# Constructors
+- `SimpleWeightedGraphAdj{T,U}(vertices::Vector{T}, edges::Vector{Vector{SimpleWeightedEdge{T,U}}})`: Constructs a new `SimpleWeightedGraphAdj{T,U}` object with the given vertices and edges.
+
+"""
 mutable struct SimpleWeightedGraphAdj{T<:Integer, U<:Real} <: AbstractGraph{T}
     vertices::Vector{T}
     edges::Vector{Vector{SimpleWeightedEdge{T,U}}}

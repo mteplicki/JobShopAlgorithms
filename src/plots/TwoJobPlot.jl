@@ -1,5 +1,25 @@
 export plot_geometric_approach, to_dataframe, gantt_chart
 
+"""
+    plot_geometric_approach(solution::ShopSchedule)
+
+This function takes a `ShopSchedule` object as input and returns a plot of the solution using a geometric approach, when n == 2. 
+Plot is generated using PlotlyJS.
+
+# Arguments
+- `solution::ShopSchedule`: A `ShopSchedule` object representing the solution to a job shop scheduling problem.
+
+# Returns
+- A plot of the solution using a geometric approach.
+
+# Examples
+```jldoctest
+julia> instance = random_instance_generator(2,5);
+julia> solution = two_jobs_job_shop(instance);
+julia> plot_geometric_approach(solution)
+```
+
+"""
 function plot_geometric_approach(solution::ShopSchedule)
     rectangle(w, h, x, y, machine::String) = scatter(
         x=x .+ [0,w,w,0,0], 
@@ -78,6 +98,18 @@ function plot_geometric_approach(solution::ShopSchedule)
     return p
 end
 
+"""
+    to_dataframe(solution::ShopSchedule)
+
+Converts a `ShopSchedule` object to a `DataFrame` object.
+
+# Arguments
+- `solution::ShopSchedule`: A `ShopSchedule` object.
+
+# Returns
+- `DataFrame`: A `DataFrame` object with columns `job`, `machine`, `starttime`, and `endtime`.
+
+"""
 function to_dataframe(solution::ShopSchedule)::DataFrame
     dataframe = DataFrame(
         job = Int64[],
@@ -93,6 +125,17 @@ function to_dataframe(solution::ShopSchedule)::DataFrame
     return dataframe
 end
 
+"""
+    gantt_chart(solution::ShopSchedule)
+
+Create a Gantt chart for a given `ShopSchedule` solution.
+
+# Arguments
+- `solution::ShopSchedule`: A `ShopSchedule` object representing a solution to a job shop scheduling problem.
+
+# Returns
+- A plot of the solution using a Gantt chart.
+"""
 function gantt_chart(solution::ShopSchedule)
     p = plot([
         bar(

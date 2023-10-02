@@ -1,13 +1,13 @@
 include("../src/ShopAlgorithms.jl")
 using .ShopAlgorithms
-using  Test
+using Test
 
 include("BranchAndBoundTest.jl")
 include("ShiftingBottleneckTests.jl")
 include("LoaderTests.jl")
 include("TwoJobsTest.jl")
 include("SingleMachineReleaseTests.jl")
-# include("RandomInstanceGenerator.jl")
+include("TrickyTest.jl")
 
 @testset verbose=true "basetests" begin
     @test 2 == 2

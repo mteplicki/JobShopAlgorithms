@@ -1,5 +1,17 @@
 export twomachinesjobshop
 
+"""
+    twomachinesjobshop(instance::JobShopInstance)
+
+Solves the two-machine job shop problem `J2 | p_ij = 1 | Lmax` for the given `instance`. Complexity is `O(r)`, where `r = sum(n_i)` is the number of operations.
+
+# Arguments
+- `instance::JobShopInstance`: An instance of the two-machine job shop problem.
+
+# Returns
+- An optimal solution to the two-machine job shop problem.
+
+"""
 twomachinesjobshop(instance::JobShopInstance) = twomachinesjobshop(
     instance.n,
     instance.m,

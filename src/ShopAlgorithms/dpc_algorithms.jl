@@ -1,6 +1,3 @@
-export schrage, dpc_sequence
-
-
 # using DataStructures
 
 # """
@@ -42,7 +39,9 @@ struct PathWithJc
     J::Vector{Int}
     type::Symbol
 end
-
+"""
+Schrage algorithm is a heuristic algorithm used in Carlier modified branch and bound algorithm.
+"""
 function schrage(p::Vector{Int}, r::Vector{Int}, q::Vector{Int}, delay::Matrix{Int})
     size(p,1) == size(r,1) == size(q,1) == size(delay, 1) == size(delay, 2) || throw(ArgumentError("p, r, q and delay must have the same size"))
     r_prim = copy(r)

@@ -8,6 +8,17 @@ mutable struct ActiveScheduleNode
     r::Vector{Vector{Int64}}
 end
 
+"""
+    generate_active_schedules(instance::JobShopInstance)
+
+Branch and Bound algorithm for the Job Shop Scheduling problem `J || Cmax` with no recirculation.
+
+# Arguments
+- `instance::JobShopInstance`: A job shop instance.
+
+# Returns
+- `ShopSchedule`: A ShopSchedule object representing the solution to the job shop problem.
+"""
 generate_active_schedules(instance::JobShopInstance) = generate_active_schedules(instance.n, instance.m, instance.n_i, instance.p, instance.μ)
 
 function generate_active_schedules(

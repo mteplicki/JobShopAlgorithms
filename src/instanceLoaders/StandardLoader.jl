@@ -2,10 +2,77 @@ export JobShopFileSpecification, StandardSpecification, TaillardSpecification
 
 abstract type JobShopFileSpecification end
 
+"""
+    StandardSpecification <: JobShopFileSpecification
+
+A struct that represents a standard job shop instance specification.
+Standard instances are specified in the following format:
+
+```text
+n m
+μ_11 p_11 μ_12 p_12 ... μ_1n_1 p_1n_1
+μ_21 p_21 μ_22 p_22 ... μ_2n_2 p_2n_2
+...
+μ_m1 p_m1 μ_m2 p_m2 ... μ_mn_m p_mn_m
+```
+
+where `n` is the number of jobs, `m` is the number of machines, `p_ij` is the processing time of job `i` on machine `j`, and `μ_ij` is the machine number of the `j`th operation of job `i`, starting from 0.
+
+
+# Fields
+- `instance::JobShopInstance`: A job shop instance.
+
+# Examples
+```jldoctest
+julia> instance = JobShopInstance(3, 2, [2, 2, 2], [[1, 2], [2, 1], [1, 2]], [[1, 2], [2, 1], [1, 2]])
+JobShopInstance(3, 2, [2, 2, 2], [[1, 2], [2, 1], [1, 2]], [[1, 2], [2, 1], [1, 2]])
+julia> specification = StandardSpecification(instance)
+StandardSpecification(JobShopInstance(3, 2, [2, 2, 2], [[1, 2], [2, 1], [1, 2]], [[1, 2], [2, 1], [1, 2]]))
+julia> write("test.txt", specification);
+julia> read("test.txt", StandardSpecification)
+StandardSpecification(JobShopInstance(3, 2, [2, 2, 2], [[1, 2], [2, 1], [1, 2]], [[1, 2], [2, 1], [1, 2]]))
+```
+
+"""
 struct StandardSpecification <: JobShopFileSpecification
     instance::JobShopInstance
 end
 
+"""
+    TaillardSpecification <: JobShopFileSpecification
+
+A struct that represents a Taillard instance specification for the Job Shop Problem.
+Taillard instances are specified in the following format:
+
+```text
+n m
+p_11 p_12 ... p_1n_1
+p_21 p_22 ... p_2n_2
+...
+p_m1 p_m2 ... p_mn_m
+μ_11 μ_12 ... μ_1n_1
+μ_21 μ_22 ... μ_2n_2
+...
+μ_m1 μ_m2 ... μ_mn_m
+```
+
+where `n` is the number of jobs, `m` is the number of machines, `p_ij` is the processing time of job `i` on machine `j`, and `μ_ij` is the machine number of the `j`th operation of job `i`.
+
+
+# Fields
+- `instance::JobShopInstance`: A JobShopInstance object representing the instance.
+
+# Examples
+```jldoctest
+julia> instance = JobShopInstance(3, 2, [2, 2, 2], [[1, 2], [2, 1], [1, 2]], [[1, 2], [2, 1], [1, 2]])
+JobShopInstance(3, 2, [2, 2, 2], [[1, 2], [2, 1], [1, 2]], [[1, 2], [2, 1], [1, 2]])
+julia> specification = TaillardSpecification(instance)
+TaillardSpecification(JobShopInstance(3, 2, [2, 2, 2], [[1, 2], [2, 1], [1, 2]], [[1, 2], [2, 1], [1, 2]]))
+julia> write("test.txt", specification)
+julia> read("test.txt", TaillardSpecification)
+TaillardSpecification(JobShopInstance(3, 2, [2, 2, 2], [[1, 2], [2, 1], [1, 2]], [[1, 2], [2, 1], [1, 2]]))
+```
+"""
 struct TaillardSpecification <: JobShopFileSpecification
     instance::JobShopInstance
 end

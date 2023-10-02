@@ -59,12 +59,13 @@ function fix_disjunctive_edges(sequence::Vector{Tuple{Int,Int}}, jobToGraphNode:
     end
 end
 """
-Returns util arrays for given instance.\\
-    Returns:\\
-    jobToGraphNode::Vector{Vector{Int}} - array of graph nodes for each job, i.e jobToGraphNode[i][j] is a graph node for job i and operation j\\
-    graphNodeToJob::Vector{Tuple{Int,Int}} - array of operations for each graph node, i.e graphNodeToJob[a]=(i,j) is a job and operation for graph node a\\
-    machineJobs::Vector{Vector{Tuple{Int,Int}}} - array of operations for each machine, i.e machineJobs[μ]=[(i1,j1), (i2, j2)] is a list of jobs for machine μ\\
-    machineWithJobs::Vector{Vector{Tuple{Int,Int}}} - array of operation for each machine and job, i.e machineWithJobs[μ][i]=(i,j) is a job and operation for machine μ and job i
+Returns util arrays for given instance.
+# Returns:
+- Tuple `(jobToGraphNode, graphNodeToJob, machineJobs, machineWithJobs)`, where:
+    - `jobToGraphNode::Vector{Vector{Int}}` - array of graph nodes for each job, i.e `jobToGraphNode[i][j]` is a graph node for job `i` and operation `j`
+    - `graphNodeToJob::Vector{Tuple{Int,Int}}` - array of operations for each graph node, i.e `graphNodeToJob[a]=(i,j)` is a job and operation for graph node `a`
+    - `machineJobs::Vector{Vector{Tuple{Int,Int}}}` - array of operations for each machine, i.e `machineJobs[μ]=[(i1,j1), (i2, j2)]` is a list of jobs for machine `μ`
+    - `machineWithJobs::Vector{Vector{Vector{Tuple{Int,Int}}}} ` - array of operation for each machine and job, i.e `machineWithJobs[μ][i]=(i,j)` is a job and operation for machine `μ` and job `i`
 """
 function generate_util_arrays(n, m, n_i, μ)
     jobToGraphNode::Vector{Vector{Int}} = [[0 for _ in 1:n_i[i]] for i in 1:n]
