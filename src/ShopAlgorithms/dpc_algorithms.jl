@@ -1,14 +1,14 @@
-using DataStructures
+# using DataStructures
 
-"""
-Safe dequeue function. If queue is empty, returns nothing instead of throwing an error.
-"""
-dequeuesafe!(queue::PriorityQueue{K,V}) where {K,V} = isempty(queue) ? nothing : dequeue!(queue)
+# """
+# Safe dequeue function. If queue is empty, returns nothing instead of throwing an error.
+# """
+# dequeuesafe!(queue::PriorityQueue{K,V}) where {K,V} = isempty(queue) ? nothing : dequeue!(queue)
 
-"""
-Safe first function. If queue is empty, returns nothing instead of throwing an error.
-"""
-firstsafe(queue::PriorityQueue{K,V}) where {K,V} = isempty(queue) ? nothing : first(first(queue))
+# """
+# Safe first function. If queue is empty, returns nothing instead of throwing an error.
+# """
+# firstsafe(queue::PriorityQueue{K,V}) where {K,V} = isempty(queue) ? nothing : first(first(queue))
 
 mutable struct DPCNode
     r::Vector{Int}
@@ -139,17 +139,17 @@ function objective(schedule::Vector, p, r, q, delay)
     S = [0 for _ in 1:length(p)+1]
     S[schedule[1]] = r[schedule[1]]
     for (job1, job2) in Iterators.zip(schedule, Iterators.drop(schedule, 1))
-        S[job2] = max(S[job1] + p[job1], r[job2], S[job1] + delay[job1, job2])
+        S[job2] = max(S[job1] + p[job1], r[job2], maximum([S[i] + delay[i, job2] for i in 1:job1 if delay[i, job2] > 0]; init=0))
     end
     return maximum(S[job] + p[job] + q[job] for job in schedule)
 end
 
-function objective2(p, r, q)
+function objective2(p, r, q, delay)
     n = length(p)
     S = [0 for _ in 1:n+1]
     S[1] = r[1]
     for (job1, job2) in Iterators.zip(1:n, Iterators.drop(1:n, 1))
-        S[job2] = max(S[job1] + p[job1], r[job2])
+        S[job2] = max(S[job1] + p[job1], r[job2], maximum([S[i] + delay[i, job2] for i in 1:job1 if delay[i, job2] > 0]; init=0))
     end
     return maximum(S[job] + p[job] + q[job] for job in 1:n)
 end
@@ -158,11 +158,15 @@ function check_sequence(schedule::Vector, p, r, n_i, graph, jobToGraphNode)
     newP = [p[job[1]][job[2]] for job in schedule]
     newQ::Vector{Int} = []
     newR = [r[job[1]][job[2]] for job in schedule]
+    delay = [0 for _ in 1:length(schedule), _ in 1:length(schedule)]
     for (a, job) in enumerate(schedule)
         d = dag_paths(graph, jobToGraphNode[job[1]][job[2]], :longest)
         push!(newQ, d[sum(n_i) + 2] - p[job[1]][job[2]])
+        for (b, job2) in enumerate(schedule)
+            delay[a, b] = d[jobToGraphNode[job2[1]][job2[2]]]
+        end
     end
-    return objective2(newP, newR, newQ)
+    return objective2(newP, newR, newQ, delay)
 end
 
 function dpc_sequence(p::Vector{Int}, r::Vector{Int}, q::Vector{Int}, delay::Matrix{Int})
@@ -187,7 +191,7 @@ function dpc_sequence(p::Vector{Int}, r::Vector{Int}, q::Vector{Int}, delay::Mat
             node1.delay[J_c, P] = node1.p[J_c]
             modifiedDelay1 = [(J_c, P)]
             update_times!(node1, path_with_Jc, f; modifiedDelay=modifiedDelay1)
-            node1.lowerBound = max(f,h([path_with_Jc.J; path_with_Jc.J_c], node1.r, q, p))
+            node1.lowerBound = max(f,h([path_with_Jc.J; path_with_Jc.J_c], node1.r, node.q, p))
             test_feasibility(node1.p, node1.r, node1.q, node1.delay) || throw(ArgumentError("node1 is not feasible"))
             node1.lowerBound < F && enqueue!(N, node1, node1.lowerBound)
 
@@ -199,7 +203,7 @@ function dpc_sequence(p::Vector{Int}, r::Vector{Int}, q::Vector{Int}, delay::Mat
                 push!(modifiedDelay2, (k, J_c))
             end
             update_times!(node2, path_with_Jc, f; modifiedDelay=modifiedDelay2)
-            node2.lowerBound = max(f,h([path_with_Jc.J; path_with_Jc.J_c], node2.r, q, p))
+            node2.lowerBound = max(f,h([path_with_Jc.J; path_with_Jc.J_c], node2.r, node.q, p))
             test_feasibility(node2.p, node2.r, node2.q, node2.delay) || throw(ArgumentError("node2 is not feasible"))
             node2.lowerBound < F && enqueue!(N, node2, node2.lowerBound)
         else # real path
@@ -215,7 +219,7 @@ function dpc_sequence(p::Vector{Int}, r::Vector{Int}, q::Vector{Int}, delay::Mat
                 push!(modifiedDelay1, (J_c, k))
             end
             update_times!(node1, path_with_Jc, f; modifiedQ=modifiedQ1, modifiedDelay=modifiedDelay1)
-            node1.lowerBound = max(f,h([path_with_Jc.J; path_with_Jc.J_c], node1.r, q, p))
+            node1.lowerBound = max(f,h([path_with_Jc.J; path_with_Jc.J_c], node1.r, node.q, p))
             test_feasibility(node1.p, node1.r, node1.q, node1.delay) || throw(ArgumentError("node1 is not feasible"))
             node1.lowerBound < F && enqueue!(N, node1, node1.lowerBound)
 
@@ -230,7 +234,7 @@ function dpc_sequence(p::Vector{Int}, r::Vector{Int}, q::Vector{Int}, delay::Mat
                 push!(modifiedDelay2, (k, J_c))
             end
             update_times!(node2, path_with_Jc, f; modifiedR=modifiedR2, modifiedDelay=modifiedDelay2)
-            node2.lowerBound = max(f,h([path_with_Jc.J; path_with_Jc.J_c], node2.r, q, p))
+            node2.lowerBound = max(f,h([path_with_Jc.J; path_with_Jc.J_c], node2.r, node.q, p))
             test_feasibility(node2.p, node2.r, node2.q, node2.delay) || throw(ArgumentError("node2 is not feasible"))
             node2.lowerBound < F && enqueue!(N, node2, node2.lowerBound)
         end
@@ -238,9 +242,6 @@ function dpc_sequence(p::Vector{Int}, r::Vector{Int}, q::Vector{Int}, delay::Mat
         f_γ = 0
         while J_c == 0 && !isempty(N) && F > f_γ
             node = dequeue!(N)
-            if node.q == [34, 40, 8, 0, 70, 104, 171, 156, 53, 210, 89, 0, 186, 193] && node.r==[52, 169, 189, 181, 133, 98, 36, 38, 152, 0, 118, 109, 29, 12]
-                println("debug1")
-            end
             
             schrage_result = schrage(node.p, node.r, node.q, node.delay)
             # if schrage_result.U[1:10] == [10,14,13,7,8,1,6,12,11,5]
@@ -248,16 +249,13 @@ function dpc_sequence(p::Vector{Int}, r::Vector{Int}, q::Vector{Int}, delay::Mat
             #     # println("node.q=$(node.q), node.r=$(node.r), node.q=$(node.q), node.delay=$(node.delay)")
             # end
             Cmax = objective(schrage_result.U, p, r, q, delay)
-            # if Cmax != schrage_result.Cmax
-            #     println("Cmax != schrage_result.Cmax; Cmax: $Cmax, schrage_result.Cmax: $(schrage_result.Cmax)")
-            # end
             path_with_Jc = critical_path_with_jc(schrage_result, node.p, node.r, node.q, node.delay)
             J_c = path_with_Jc.J_c
             P = path_with_Jc.p
             f_γ = node.lowerBound
-            f = max(f_γ, h(path_with_Jc.J, node.r, q, p))
+            f = max(f_γ, h(path_with_Jc.J, node.r, node.q, p))
             #println("f_γ=$f_γ, f=$f, F=$F, J_c=$J_c, J=$(path_with_Jc.J), P=$P, result=$(schrage_result.U), Cmax=$(schrage_result.Cmax), type=$(path_with_Jc.type)")
-            if Cmax <= F
+            if Cmax < F
                 bestResult = schrage_result
                 F = Cmax
                 # if path_with_Jc.type == :last 
@@ -397,15 +395,22 @@ end
 
 
 function test_schrage()
+    # p = [18, 13, 14, 16, 19, 11, 15, 9, 17, 12, 15, 15, 7, 17]
+    # r = [52, 150, 177, 175, 124, 84, 21, 38, 128, 0, 106, 93, 11, 0]
+    # q = [34, 40, 8, 0, 43, 58, 160, 145, 0, 184, 20, 0, 176, 179]
+    # d = [174, 168, 200, 208, 165, 150, 48, 63, 208, 24, 188, 208, 32, 29]
+    # delay = [0 -9223372036854775658 -9223372036854775631 -9223372036854775633 -9223372036854775684 -9223372036854775724 -9223372036854775787 -9223372036854775770 -9223372036854775680 -9223372036854775808 -9223372036854775702 -9223372036854775715 -9223372036854775797 -9223372036854775808; -9223372036854775756 0 -9223372036854775631 -9223372036854775633 -9223372036854775684 -9223372036854775724 -9223372036854775787 -9223372036854775770 -9223372036854775680 -9223372036854775808 -9223372036854775702 -9223372036854775715 -9223372036854775797 -9223372036854775808; -9223372036854775756 -9223372036854775658 0 -9223372036854775633 -9223372036854775684 -9223372036854775724 -9223372036854775787 -9223372036854775770 -9223372036854775680 -9223372036854775808 -9223372036854775702 -9223372036854775715 -9223372036854775797 -9223372036854775808; -9223372036854775756 -9223372036854775658 -9223372036854775631 0 -9223372036854775684 -9223372036854775724 -9223372036854775787 -9223372036854775770 -9223372036854775680 -9223372036854775808 -9223372036854775702 -9223372036854775715 -9223372036854775797 -9223372036854775808; -9223372036854775756 -9223372036854775658 -9223372036854775631 -9223372036854775633 0 -9223372036854775724 -9223372036854775787 -9223372036854775770 -9223372036854775680 -9223372036854775808 -9223372036854775702 -9223372036854775715 -9223372036854775797 -9223372036854775808; -9223372036854775756 -9223372036854775658 -9223372036854775631 -9223372036854775633 -9223372036854775684 0 -9223372036854775787 -9223372036854775770 -9223372036854775680 -9223372036854775808 -9223372036854775702 -9223372036854775715 -9223372036854775797 -9223372036854775808; -9223372036854775756 120 153 145 67 62 0 -9223372036854775770 104 -9223372036854775808 82 -9223372036854775715 -9223372036854775797 -9223372036854775808; -9223372036854775756 99 132 124 -9223372036854775684 41 -9223372036854775787 0 83 -9223372036854775808 61 -9223372036854775715 -9223372036854775797 -9223372036854775808; -9223372036854775756 -9223372036854775658 -9223372036854775631 -9223372036854775633 -9223372036854775684 -9223372036854775724 -9223372036854775787 -9223372036854775770 0 -9223372036854775808 -9223372036854775702 -9223372036854775715 -9223372036854775797 -9223372036854775808; -9223372036854775756 141 174 166 -9223372036854775684 83 -9223372036854775787 -9223372036854775770 125 0 103 -9223372036854775715 -9223372036854775797 -9223372036854775808; -9223372036854775756 -9223372036854775658 -9223372036854775631 -9223372036854775633 -9223372036854775684 -9223372036854775724 -9223372036854775787 -9223372036854775770 -9223372036854775680 -9223372036854775808 0 -9223372036854775715 -9223372036854775797 -9223372036854775808; -9223372036854775756 -9223372036854775658 -9223372036854775631 -9223372036854775633 -9223372036854775684 -9223372036854775724 -9223372036854775787 -9223372036854775770 -9223372036854775680 -9223372036854775808 -9223372036854775702 0 -9223372036854775797 -9223372036854775808; -9223372036854775756 125 152 150 99 -9223372036854775724 -9223372036854775787 -9223372036854775770 103 -9223372036854775808 81 -9223372036854775715 0 -9223372036854775808; -9223372036854775756 141 174 166 88 83 -9223372036854775787 -9223372036854775770 125 -9223372036854775808 103 -9223372036854775715 -9223372036854775797 0]
+    # println(dpc_sequence(p, r, q, delay))
+    # println(objective(#=[10, 14, 13, 7, 8, 1, 6, 12, 11, 5, 2, 9, 3, 4]=#[10, 14, 13, 7, 8, 1, 12, 6, 5, 9, 2, 11, 3, 4], p, r, q, delay))
+
     p = [18, 13, 14, 16, 19, 11, 15, 9, 17, 12, 15, 15, 7, 17]
     r = [52, 150, 177, 175, 124, 84, 21, 38, 128, 0, 106, 93, 11, 0]
     q = [34, 40, 8, 0, 43, 58, 160, 145, 0, 184, 20, 0, 176, 179]
-    d = [174, 168, 200, 208, 165, 150, 48, 63, 208, 24, 188, 208, 32, 29]
     delay = [0 -9223372036854775658 -9223372036854775631 -9223372036854775633 -9223372036854775684 -9223372036854775724 -9223372036854775787 -9223372036854775770 -9223372036854775680 -9223372036854775808 -9223372036854775702 -9223372036854775715 -9223372036854775797 -9223372036854775808; -9223372036854775756 0 -9223372036854775631 -9223372036854775633 -9223372036854775684 -9223372036854775724 -9223372036854775787 -9223372036854775770 -9223372036854775680 -9223372036854775808 -9223372036854775702 -9223372036854775715 -9223372036854775797 -9223372036854775808; -9223372036854775756 -9223372036854775658 0 -9223372036854775633 -9223372036854775684 -9223372036854775724 -9223372036854775787 -9223372036854775770 -9223372036854775680 -9223372036854775808 -9223372036854775702 -9223372036854775715 -9223372036854775797 -9223372036854775808; -9223372036854775756 -9223372036854775658 -9223372036854775631 0 -9223372036854775684 -9223372036854775724 -9223372036854775787 -9223372036854775770 -9223372036854775680 -9223372036854775808 -9223372036854775702 -9223372036854775715 -9223372036854775797 -9223372036854775808; -9223372036854775756 -9223372036854775658 -9223372036854775631 -9223372036854775633 0 -9223372036854775724 -9223372036854775787 -9223372036854775770 -9223372036854775680 -9223372036854775808 -9223372036854775702 -9223372036854775715 -9223372036854775797 -9223372036854775808; -9223372036854775756 -9223372036854775658 -9223372036854775631 -9223372036854775633 -9223372036854775684 0 -9223372036854775787 -9223372036854775770 -9223372036854775680 -9223372036854775808 -9223372036854775702 -9223372036854775715 -9223372036854775797 -9223372036854775808; -9223372036854775756 120 153 145 67 62 0 -9223372036854775770 104 -9223372036854775808 82 -9223372036854775715 -9223372036854775797 -9223372036854775808; -9223372036854775756 99 132 124 -9223372036854775684 41 -9223372036854775787 0 83 -9223372036854775808 61 -9223372036854775715 -9223372036854775797 -9223372036854775808; -9223372036854775756 -9223372036854775658 -9223372036854775631 -9223372036854775633 -9223372036854775684 -9223372036854775724 -9223372036854775787 -9223372036854775770 0 -9223372036854775808 -9223372036854775702 -9223372036854775715 -9223372036854775797 -9223372036854775808; -9223372036854775756 141 174 166 -9223372036854775684 83 -9223372036854775787 -9223372036854775770 125 0 103 -9223372036854775715 -9223372036854775797 -9223372036854775808; -9223372036854775756 -9223372036854775658 -9223372036854775631 -9223372036854775633 -9223372036854775684 -9223372036854775724 -9223372036854775787 -9223372036854775770 -9223372036854775680 -9223372036854775808 0 -9223372036854775715 -9223372036854775797 -9223372036854775808; -9223372036854775756 -9223372036854775658 -9223372036854775631 -9223372036854775633 -9223372036854775684 -9223372036854775724 -9223372036854775787 -9223372036854775770 -9223372036854775680 -9223372036854775808 -9223372036854775702 0 -9223372036854775797 -9223372036854775808; -9223372036854775756 125 152 150 99 -9223372036854775724 -9223372036854775787 -9223372036854775770 103 -9223372036854775808 81 -9223372036854775715 0 -9223372036854775808; -9223372036854775756 141 174 166 88 83 -9223372036854775787 -9223372036854775770 125 -9223372036854775808 103 -9223372036854775715 -9223372036854775797 0]
     println(dpc_sequence(p, r, q, delay))
-    println(objective([10, 14, 13, 7, 8, 1, 6, 12, 11, 5, 2, 9, 3, 4], p, r, q, delay))
+    println(objective(#=[10, 14, 13, 7, 8, 1, 6, 12, 11, 5, 2, 9, 3, 4]=#[10, 14, 13, 7, 8, 1, 12, 6, 5, 9, 2, 11, 3, 4], p, r, q, delay))
 
 end
 
-test_schrage()
+# test_schrage()
 
