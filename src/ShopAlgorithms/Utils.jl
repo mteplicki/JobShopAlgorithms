@@ -44,7 +44,23 @@ function generate_sequence_dpc(p::Vector{Vector{Int}}, r::Vector{Vector{Int}}, n
     end
     Cmax, sequence = dpc_sequence(newP, newR, newQ, newDelay)
     return Cmax, map(x -> machineJobs[i][x], sequence)
+end
 
+function generate_data(p::Vector{Vector{Int}}, r::Vector{Vector{Int}}, n_i::Vector{Int}, machineJobs::Vector{Vector{Tuple{Int,Int}}}, jobToGraphNode::Vector{Vector{Int}}, graph::SimpleWeightedGraphAdj{Int, Int}, Cmax::Int64, i::Int)
+    newP = [p[job[1]][job[2]] for job in machineJobs[i]]
+    newQ::Vector{Int} = []
+    newD::Vector{Int} = []
+    newR = [r[job[1]][job[2]] for job in machineJobs[i]]
+    newDelay::Matrix{Int} = [0 for _ in 1:length(machineJobs[i]), _ in 1:length(machineJobs[i])]
+    for (a, job) in enumerate(machineJobs[i])
+        d = dag_paths(graph, jobToGraphNode[job[1]][job[2]], :longest)
+        push!(newQ, d[sum(n_i) + 2] - p[job[1]][job[2]])
+        push!(newD, Cmax + p[job[1]][job[2]] - d[sum(n_i) + 2])
+        for (b, job2) in enumerate(machineJobs[i])
+            newDelay[a, b] = d[jobToGraphNode[job2[1]][job2[2]]]
+        end
+    end
+    return newP, newR, newQ, newD, newDelay
 end
 
 """

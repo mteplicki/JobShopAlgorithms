@@ -58,7 +58,37 @@ function shiftingbottleneck(
         # wybierz tę, dla której algorytm 1 | r_j | Lmax wskaże najdłuższy czas wykonania (Bottleneck)
         for i in setdiff(M, M_0)
             LmaxCandidate, sequenceCandidate = generate_sequence(p, r, n_i, machineJobs, jobToGraphNode, graph, Cmax, i)
+            CmaxCandidate, sequenceCandidate2 = generate_sequence_dpc(p, r, n_i, machineJobs, jobToGraphNode, graph, Cmax, i)
+            
             if LmaxCandidate >= Lmax
+                if CmaxCandidate != LmaxCandidate + Cmax
+                    println("essa1: $CmaxCandidate !=  $LmaxCandidate + $Cmax; sequence1: $sequenceCandidate; sequence2: $sequenceCandidate2")
+                    println("Cmaxsequence1: $(check_sequence(sequenceCandidate, p, r, n_i, graph, jobToGraphNode))")
+                    println("Cmaxsequence2: $(check_sequence(sequenceCandidate2, p, r, n_i, graph, jobToGraphNode))")
+                    p1,r1,q1,d1,delay1 = generate_data(p, r, n_i, machineJobs, jobToGraphNode, graph, Cmax, i)
+                    println("p = $p1")
+                    println("r = $r1")
+                    println("q = $q1")
+                    println("d = $d1")
+                    println("delay = $delay1")
+                    # testgraph = deepcopy(graph)
+                    # fix_disjunctive_edges(sequenceCandidate, jobToGraphNode, testgraph, p, i, machineFixedEdges)
+                    # r, rGraph = generate_release_times(testgraph, n_i, graphNodeToJob)
+                    # # możliwe usprawnienia - być może nie trzeba obliczać za każdym razem Cmax, tylko polegać na wskazaniu algorytmu 1 | r_j | Lmax
+                    # Cmax = rGraph[sum(n_i)+2]
+                    # println("Cmax1: $Cmax")
+                    # testgraph = deepcopy(graph)
+                    # fix_disjunctive_edges(sequenceCandidate2, jobToGraphNode, testgraph, p, i, machineFixedEdges)
+                    # r, rGraph = generate_release_times(testgraph, n_i, graphNodeToJob)
+                    # # możliwe usprawnienia - być może nie trzeba obliczać za każdym razem Cmax, tylko polegać na wskazaniu algorytmu 1 | r_j | Lmax
+                    # Cmax = rGraph[sum(n_i)+2]
+                    # println("Cmax2: $Cmax")
+
+                    
+
+                    println("(6,4) -> $(findfirst(x -> x == (6,4), machineJobs[i]))")
+                    println("(12,7) -> $(findfirst(x -> x == (12,7), machineJobs[i]))")
+                end
                 Lmax = LmaxCandidate
                 sequence = sequenceCandidate
                 k = i
@@ -78,9 +108,16 @@ function shiftingbottleneck(
             r, rGraph = generate_release_times(graph, n_i, graphNodeToJob)
             longestPath = rGraph[sum(n_i)+2]
             LmaxCandidate, sequenceCandidate = generate_sequence(p, r, n_i, machineJobs, jobToGraphNode, graph, Cmax, fixMachine)
+            CmaxCandidate, sequenceCandidate2 = generate_sequence_dpc(p, r, n_i, machineJobs, jobToGraphNode, graph, Cmax, fixMachine)
+            
             if LmaxCandidate + longestPath >= Cmax
                 graph = backUpGraph
             else
+                if CmaxCandidate != LmaxCandidate + Cmax
+                    println("essa2: $CmaxCandidate !=  $LmaxCandidate + $Cmax; sequence1: $sequenceCandidate; sequence2: $sequenceCandidate2")
+                    println("Cmaxsequence1: $(check_sequence(sequenceCandidate, p, r, n_i, graph, jobToGraphNode))")
+                    println("Cmaxsequence2: $(check_sequence(sequenceCandidate2, p, r, n_i, graph, jobToGraphNode))")
+                end
                 empty!(machineFixedEdges[fixMachine])
                 Cmax = LmaxCandidate + longestPath
                 fix_disjunctive_edges(sequenceCandidate, jobToGraphNode, graph, p, fixMachine, machineFixedEdges)

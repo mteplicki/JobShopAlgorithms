@@ -8,6 +8,7 @@ include("LoaderTests.jl")
 include("TwoJobsTest.jl")
 include("SingleMachineReleaseTests.jl")
 include("TrickyTest.jl")
+include("DPCTest.jl")
 
 @testset verbose=true "basetests" begin
     @test 2 == 2

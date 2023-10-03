@@ -28,12 +28,12 @@ module ShopAlgorithms
     include("ShopAlgorithms/ShiftingBottleneckDPC.jl")
 
     function test1()
-        for x in 3:2:11
-            rng = MersenneTwister(123)
-            instance = random_instance_generator(x,x; rng=rng, pMax = 3x, pMin = x, n_i=fill(x, x), job_recirculation=true)
+        for x in 3:1:8
+            rng = MersenneTwister(1234)
+            instance = random_instance_generator(2x,x; rng=rng, pMax = 3x, pMin = x, n_i=fill(x, 2x))
             println(instance)
-            # println(shiftingbottleneck(instance)) 
-            println(shiftingbottleneckdpc(instance))
+            println(shiftingbottleneck(instance)) 
+            # println(shiftingbottleneckdpc(instance))
         end
     end
     test1()
