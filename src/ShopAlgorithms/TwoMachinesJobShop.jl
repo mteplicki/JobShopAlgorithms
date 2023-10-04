@@ -1,4 +1,4 @@
-export twomachinesjobshop
+export two_machines_job_shop
 
 """
     twomachinesjobshop(instance::JobShopInstance)
@@ -12,7 +12,7 @@ Solves the two-machine job shop problem `J2 | p_ij = 1 | Lmax` for the given `in
 - An optimal solution to the two-machine job shop problem.
 
 """
-twomachinesjobshop(instance::JobShopInstance) = twomachinesjobshop(
+two_machines_job_shop(instance::JobShopInstance) = two_machines_job_shop(
     instance.n,
     instance.m,
     instance.n_i,
@@ -21,7 +21,7 @@ twomachinesjobshop(instance::JobShopInstance) = twomachinesjobshop(
     instance.d
 )
 
-function twomachinesjobshop(
+function two_machines_job_shop(
     n::Int64,
     m::Int64,
     n_i::Vector{Int},

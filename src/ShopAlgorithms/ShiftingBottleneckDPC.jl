@@ -12,7 +12,7 @@ Delayed Precedence Constraints algorithm. The solution of the problem is not gua
 - `instance::JobShopInstance`: An instance of the job shop scheduling problem.
 
 # Returns
-- An instance of the job shop scheduling problem in the format required by the `shiftingbottleneckdpc` function.
+- An instance of the job shop scheduling problem in the format required by the `shiftingbottleneckdpc` function. The solution is not guaranteed to be optimal.
 """
 shiftingbottleneckdpc(instance::JobShopInstance) = shiftingbottleneckdpc(
     instance.n,
@@ -65,6 +65,7 @@ function shiftingbottleneckdpc(
         # sprawdź, czy można lepiej je ustawić i zmniejszyć Cmax
         for fixMachine in setdiff(M_0, Set([k]))
             backUpGraph = deepcopy(graph)
+            # println("fixMachine: $fixMachine")
             for (job1, job2) in machineFixedEdges[fixMachine]
                 rem_edge!(graph, job1, job2)
             end

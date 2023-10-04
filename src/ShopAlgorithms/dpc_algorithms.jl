@@ -10,20 +10,13 @@
 # """
 # firstsafe(queue::PriorityQueue{K,V}) where {K,V} = isempty(queue) ? nothing : first(first(queue))
 
-mutable struct DPCNode
-    r::Vector{Int}
-    q::Vector{Int}
-    p::Vector{Int}
-    delay::Matrix{Int}
-    lowerBound::Int
-end
+import Base: ==
+
 
 struct Path
     J::Vector{Int}
     type::Symbol
 end
-
-Base.:(==)(p1::Path, p2::Path) = p1.J == p2.J && p1.type == p2.type
 
 struct SchrageResult
     U::Vector{Int}
@@ -31,6 +24,7 @@ struct SchrageResult
     real_paths::Vector{Path}
     artificial_paths::Vector{Path}
     Cmax::Int
+    r_prim::Vector{Int}
 end
 
 struct PathWithJc
@@ -39,6 +33,25 @@ struct PathWithJc
     J::Vector{Int}
     type::Symbol
 end
+
+mutable struct DPCNode
+    r::Vector{Int}
+    q::Vector{Int}
+    p::Vector{Int}
+    delay::Matrix{Int}
+    lowerBound::Int
+    # parents::Vector{Tuple{DPCNode, Symbol}}
+    # schrage_result::Union{SchrageResult,Nothing}
+    # path_with_Jc::Union{PathWithJc,Nothing}
+end
+
+Base.:(==)(p1::Path, p2::Path) = p1.J == p2.J && p1.type == p2.type
+
+
+
+Base.:(==)(p1::PathWithJc, p2::PathWithJc) = p1.J_c == p2.J_c && p1.p == p2.p && p1.J == p2.J && p1.type == p2.type
+
+
 """
 Schrage algorithm is a heuristic algorithm used in Carlier modified branch and bound algorithm.
 """
@@ -95,7 +108,7 @@ function schrage(p::Vector{Int}, r::Vector{Int}, q::Vector{Int}, delay::Matrix{I
         end
     end
     real_paths, artificial_paths = reconstruct_paths_schrange(n, criticalJobs, artificialCriticalJobs)
-    return SchrageResult(U, S, real_paths, artificial_paths, S[n+1])
+    return SchrageResult(U, S, real_paths, artificial_paths, S[n+1], r_prim)
 end
 
 function reconstruct_paths_schrange(n, criticalJobs, artificialCriticalJobs)
@@ -138,8 +151,8 @@ h(J::Vector{Int}, r::Vector{Int}, q::Vector{Int}, p::Vector{Int}) = minimum(j->r
 function objective(schedule::Vector, p, r, q, delay)
     S = [0 for _ in 1:length(p)+1]
     S[schedule[1]] = r[schedule[1]]
-    for (job1, job2) in Iterators.zip(schedule, Iterators.drop(schedule, 1))
-        S[job2] = max(S[job1] + p[job1], r[job2], maximum([S[i] + delay[i, job2] for i in 1:job1 if delay[i, job2] > 0]; init=0))
+    for (index_job1, (job1, job2)) in enumerate(Iterators.zip(schedule, Iterators.drop(schedule, 1)))
+        S[job2] = max(S[job1] + p[job1], r[job2], maximum([S[i] + delay[i, job2] for i in schedule[1:index_job1] if delay[i, job2] > 0]; init=0))
     end
     return maximum(S[job] + p[job] + q[job] for job in schedule)
 end
@@ -171,6 +184,7 @@ end
 
 function dpc_sequence(p::Vector{Int}, r::Vector{Int}, q::Vector{Int}, delay::Matrix{Int})
     bestResult::Union{SchrageResult,Nothing} = nothing
+    bestNode::Union{DPCNode,Nothing} = nothing
     N = PriorityQueue{DPCNode, Int}()
     map!(x->max(0,x), delay, delay)
 
@@ -179,7 +193,7 @@ function dpc_sequence(p::Vector{Int}, r::Vector{Int}, q::Vector{Int}, delay::Mat
     path_with_Jc::PathWithJc = critical_path_with_jc(schrage_result, p, r, q, delay)
     J_c = path_with_Jc.J_c
     P = path_with_Jc.p
-    node = DPCNode(r, q, p, delay, h(path_with_Jc.J, r, q, p))
+    node = DPCNode(r, q, p, delay, h(path_with_Jc.J, r, q, p))#, [], schrage_result, path_with_Jc)
     f = node.lowerBound
     F = Cmax
     bestResult = schrage_result
@@ -192,7 +206,8 @@ function dpc_sequence(p::Vector{Int}, r::Vector{Int}, q::Vector{Int}, delay::Mat
             modifiedDelay1 = [(J_c, P)]
             update_times!(node1, path_with_Jc, f; modifiedDelay=modifiedDelay1)
             node1.lowerBound = max(f,h([path_with_Jc.J; path_with_Jc.J_c], node1.r, node.q, p))
-            test_feasibility(node1.p, node1.r, node1.q, node1.delay) || throw(ArgumentError("node1 is not feasible"))
+            # push!(node1.parents, (node, :artificial_before))
+            # test_feasibility(node1.p, node1.r, node1.q, node1.delay) || throw(ArgumentError("node1 is not feasible"))
             node1.lowerBound < F && enqueue!(N, node1, node1.lowerBound)
 
             # J_c after all jobs of J
@@ -204,7 +219,8 @@ function dpc_sequence(p::Vector{Int}, r::Vector{Int}, q::Vector{Int}, delay::Mat
             end
             update_times!(node2, path_with_Jc, f; modifiedDelay=modifiedDelay2)
             node2.lowerBound = max(f,h([path_with_Jc.J; path_with_Jc.J_c], node2.r, node.q, p))
-            test_feasibility(node2.p, node2.r, node2.q, node2.delay) || throw(ArgumentError("node2 is not feasible"))
+            # push!(node2.parents, (node, :artificial_after))
+            # test_feasibility(node2.p, node2.r, node2.q, node2.delay) || throw(ArgumentError("node2 is not feasible"))
             node2.lowerBound < F && enqueue!(N, node2, node2.lowerBound)
         else # real path
             #println("real")
@@ -220,12 +236,13 @@ function dpc_sequence(p::Vector{Int}, r::Vector{Int}, q::Vector{Int}, delay::Mat
             end
             update_times!(node1, path_with_Jc, f; modifiedQ=modifiedQ1, modifiedDelay=modifiedDelay1)
             node1.lowerBound = max(f,h([path_with_Jc.J; path_with_Jc.J_c], node1.r, node.q, p))
-            test_feasibility(node1.p, node1.r, node1.q, node1.delay) || throw(ArgumentError("node1 is not feasible"))
+            # push!(node1.parents, (node, :real_before))
+            # test_feasibility(node1.p, node1.r, node1.q, node1.delay) || throw(ArgumentError("node1 is not feasible"))
             node1.lowerBound < F && enqueue!(N, node1, node1.lowerBound)
 
             # after all job in J
             node2 = deepcopy(node)
-            node2.r[J_c] = max(node2.r[J_c], minimum(j->node2.r[j], path_with_Jc.J) + sum(j->node2.p[j], path_with_Jc.J))
+            node2.r[J_c] = max(node2.r[J_c], minimum(j->schrage_result.r_prim[j], path_with_Jc.J) + sum(j->node2.p[j], path_with_Jc.J))
             modifiedR2 = [J_c]
 
             modifiedDelay2 = NTuple{2,Int}[]
@@ -235,32 +252,45 @@ function dpc_sequence(p::Vector{Int}, r::Vector{Int}, q::Vector{Int}, delay::Mat
             end
             update_times!(node2, path_with_Jc, f; modifiedR=modifiedR2, modifiedDelay=modifiedDelay2)
             node2.lowerBound = max(f,h([path_with_Jc.J; path_with_Jc.J_c], node2.r, node.q, p))
-            test_feasibility(node2.p, node2.r, node2.q, node2.delay) || throw(ArgumentError("node2 is not feasible"))
+            # push!(node2.parents, (node, :real_after))
+            # test_feasibility(node2.p, node2.r, node2.q, node2.delay) || throw(ArgumentError("node2 is not feasible"))
             node2.lowerBound < F && enqueue!(N, node2, node2.lowerBound)
         end
         J_c = 0
         f_γ = 0
         while J_c == 0 && !isempty(N) && F > f_γ
             node = dequeue!(N)
+            # if hash(node.delay) in [0xd8f45161ddee25a1, 0xe80807f7ea61485c, 0x79e422179cc5e8e0, 0x6f7fa9f9461b40bd, 0x0aac02db4fb465d6, 0xcae219c96fb6e9ac, 0xb28a832a7f2e4247]
+            #     println("debug")
+            # end
             
             schrage_result = schrage(node.p, node.r, node.q, node.delay)
             # if schrage_result.U[1:10] == [10,14,13,7,8,1,6,12,11,5]
             #     println("debug2")
             #     # println("node.q=$(node.q), node.r=$(node.r), node.q=$(node.q), node.delay=$(node.delay)")
             # end
-            Cmax = objective(schrage_result.U, p, r, q, delay)
+            Cmax = schrage_result.Cmax
+            # if Cmax != objective(schrage_result.U, p, r, q, delay)
+            #     println("Cmax: $Cmax, objective: $(objective(schrage_result.U, p, r, q, delay))")
+            # end
             path_with_Jc = critical_path_with_jc(schrage_result, node.p, node.r, node.q, node.delay)
             J_c = path_with_Jc.J_c
             P = path_with_Jc.p
             f_γ = node.lowerBound
             f = max(f_γ, h(path_with_Jc.J, node.r, node.q, p))
-            #println("f_γ=$f_γ, f=$f, F=$F, J_c=$J_c, J=$(path_with_Jc.J), P=$P, result=$(schrage_result.U), Cmax=$(schrage_result.Cmax), type=$(path_with_Jc.type)")
+            # node.schrage_result = schrage_result
+            # node.path_with_Jc = path_with_Jc
+            # println("f_γ=$f_γ, f=$f, F=$F, J_c=$J_c, J=$(path_with_Jc.J), P=$P, result=$(schrage_result.U), Cmax=$(schrage_result.Cmax), type=$(path_with_Jc.type)")
+            if f_γ==206 && f==206 && F==209 && J_c==3 && path_with_Jc.J==[7] && schrage_result.U==[5, 4, 12, 10, 1, 15, 3, 7, 2, 6, 8, 11, 9, 14, 13] && schrage_result.Cmax==209
+                println("debug")
+            end
+            if f_γ==206 && f==206 && F==209 && J_c==7 && path_with_Jc.J==[15] && schrage_result.U==[5, 4, 3, 12, 1, 10, 7, 15, 2, 6, 8, 11, 9, 14, 13]
+                println("debug2")
+            end
             if Cmax < F
                 bestResult = schrage_result
+                bestNode = node
                 F = Cmax
-                # if path_with_Jc.type == :last 
-                #     return (bestResult.Cmax, bestResult.U)
-                # end 
             end
         end
     end
@@ -408,8 +438,10 @@ function test_schrage()
     q = [34, 40, 8, 0, 43, 58, 160, 145, 0, 184, 20, 0, 176, 179]
     delay = [0 -9223372036854775658 -9223372036854775631 -9223372036854775633 -9223372036854775684 -9223372036854775724 -9223372036854775787 -9223372036854775770 -9223372036854775680 -9223372036854775808 -9223372036854775702 -9223372036854775715 -9223372036854775797 -9223372036854775808; -9223372036854775756 0 -9223372036854775631 -9223372036854775633 -9223372036854775684 -9223372036854775724 -9223372036854775787 -9223372036854775770 -9223372036854775680 -9223372036854775808 -9223372036854775702 -9223372036854775715 -9223372036854775797 -9223372036854775808; -9223372036854775756 -9223372036854775658 0 -9223372036854775633 -9223372036854775684 -9223372036854775724 -9223372036854775787 -9223372036854775770 -9223372036854775680 -9223372036854775808 -9223372036854775702 -9223372036854775715 -9223372036854775797 -9223372036854775808; -9223372036854775756 -9223372036854775658 -9223372036854775631 0 -9223372036854775684 -9223372036854775724 -9223372036854775787 -9223372036854775770 -9223372036854775680 -9223372036854775808 -9223372036854775702 -9223372036854775715 -9223372036854775797 -9223372036854775808; -9223372036854775756 -9223372036854775658 -9223372036854775631 -9223372036854775633 0 -9223372036854775724 -9223372036854775787 -9223372036854775770 -9223372036854775680 -9223372036854775808 -9223372036854775702 -9223372036854775715 -9223372036854775797 -9223372036854775808; -9223372036854775756 -9223372036854775658 -9223372036854775631 -9223372036854775633 -9223372036854775684 0 -9223372036854775787 -9223372036854775770 -9223372036854775680 -9223372036854775808 -9223372036854775702 -9223372036854775715 -9223372036854775797 -9223372036854775808; -9223372036854775756 120 153 145 67 62 0 -9223372036854775770 104 -9223372036854775808 82 -9223372036854775715 -9223372036854775797 -9223372036854775808; -9223372036854775756 99 132 124 -9223372036854775684 41 -9223372036854775787 0 83 -9223372036854775808 61 -9223372036854775715 -9223372036854775797 -9223372036854775808; -9223372036854775756 -9223372036854775658 -9223372036854775631 -9223372036854775633 -9223372036854775684 -9223372036854775724 -9223372036854775787 -9223372036854775770 0 -9223372036854775808 -9223372036854775702 -9223372036854775715 -9223372036854775797 -9223372036854775808; -9223372036854775756 141 174 166 -9223372036854775684 83 -9223372036854775787 -9223372036854775770 125 0 103 -9223372036854775715 -9223372036854775797 -9223372036854775808; -9223372036854775756 -9223372036854775658 -9223372036854775631 -9223372036854775633 -9223372036854775684 -9223372036854775724 -9223372036854775787 -9223372036854775770 -9223372036854775680 -9223372036854775808 0 -9223372036854775715 -9223372036854775797 -9223372036854775808; -9223372036854775756 -9223372036854775658 -9223372036854775631 -9223372036854775633 -9223372036854775684 -9223372036854775724 -9223372036854775787 -9223372036854775770 -9223372036854775680 -9223372036854775808 -9223372036854775702 0 -9223372036854775797 -9223372036854775808; -9223372036854775756 125 152 150 99 -9223372036854775724 -9223372036854775787 -9223372036854775770 103 -9223372036854775808 81 -9223372036854775715 0 -9223372036854775808; -9223372036854775756 141 174 166 88 83 -9223372036854775787 -9223372036854775770 125 -9223372036854775808 103 -9223372036854775715 -9223372036854775797 0]
     println(dpc_sequence(p, r, q, delay))
-    println(objective(#=[10, 14, 13, 7, 8, 1, 6, 12, 11, 5, 2, 9, 3, 4]=#[10, 14, 13, 7, 8, 1, 12, 6, 5, 9, 2, 11, 3, 4], p, r, q, delay))
+    println(objective(#=[10, 14, 13, 7, 8, 1, 12, 6, 5, 9, 2, 11, 3, 4]=#[10, 14, 13, 7, 8, 1, 12, 6, 11, 5, 2, 9, 3, 4], p, r, q, delay))
 
+
+    
 end
 
 # test_schrage()

@@ -1,12 +1,13 @@
 # BEGIN: abpxx6d04wxr
-import Random: MersenneTwister
+# import Random: MersenneTwister
 import .ShopAlgorithms: two_jobs_job_shop, generate_active_schedules, random_instance_generator
 testsWithResults = [
     ("twojobsinstances/test1.txt", 31),
     ("twojobsinstances/test2.txt", 36)
     ]
-rng = MersenneTwister(123456)
+
 @testset "TwoJobsTest" verbose = true begin
+    rng = MersenneTwister(123456)
     @testset "TwoJobsTestFromFile $filename" verbose = true for (filename, expectedValue) in testsWithResults 
         @test two_jobs_job_shop(open(x->read(x, StandardSpecification), filename)).objectiveValue <= expectedValue
     end
