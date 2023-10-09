@@ -1,4 +1,4 @@
-import .ShopAlgorithms: JobShopInstance, generate_active_schedules, StandardSpecification
+function BranchAndBoundTest()
 
 testsWithResults = [
     ("instances/test1.txt", 28), 
@@ -6,5 +6,7 @@ testsWithResults = [
     #, ("instances/test3.txt", 666)
     ]
 @testset "BranchAndBoundTest" verbose = true for (filename, expectedValue) in testsWithResults 
-    @test generate_active_schedules(open(x->read(x, StandardSpecification), filename)).objectiveValue == expectedValue
+    @test Algorithms.generate_active_schedules(open(x->read(x, InstanceLoaders.StandardSpecification), filename)).objectiveValue == expectedValue
+end
+
 end

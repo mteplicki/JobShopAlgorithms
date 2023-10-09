@@ -1,4 +1,7 @@
-@testset "DPCTest" begin
+import ShopAlgorithms.Algorithms: dpc_sequence, test_feasibility
+
+function DPCTest()
+@testset "DPCTest" verbose=true begin
     @testset "DPCTest1" verbose=true begin
         r = [0, 2, 5, 8, 10, 15]
         p = [4, 4, 2, 1, 3, 2]
@@ -110,4 +113,5 @@
         CMax, _ = dpc_sequence(p, r, q, delay)
         @test CMax == 85
     end
+end
 end

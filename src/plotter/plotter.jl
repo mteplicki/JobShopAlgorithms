@@ -1,3 +1,6 @@
+module Plotter
+using ..ShopAlgorithms.ShopInstances
+using PlotlyJS, DataFrames
 export plot_geometric_approach, to_dataframe, gantt_chart
 
 """
@@ -160,4 +163,6 @@ function gantt_chart(solution::ShopSchedule)
         xaxis_title="Time",
         title="Gantt chart"))
     return p
+end
+
 end

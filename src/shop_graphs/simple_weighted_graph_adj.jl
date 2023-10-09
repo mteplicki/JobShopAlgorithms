@@ -1,6 +1,6 @@
-using Graphs
 import Base.getindex
-import Graphs: add_edge!, rem_edge!, AbstractGraph, AbstractEdge, has_edge, has_vertex, add_vertex!
+import Graphs: add_edge!, add_vertex!
+# import Graphs: add_edge!, rem_edge!, AbstractGraph, AbstractEdge, has_edge, has_vertex, add_vertex!
 export SimpleWeightedGraphAdj, SimpleWeightedEdge
 
 """

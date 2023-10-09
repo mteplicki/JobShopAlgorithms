@@ -1,4 +1,6 @@
-import ShopAlgorithms: single_machine_release_LMax
+import ShopAlgorithms: Algorithms.single_machine_release_LMax
+
+function SingleMachineReleaseLMaxTest()
 
 @testset "SingleMachineReleaseTests.jl" begin
     r = [0, 10, 9, 18]
@@ -9,4 +11,6 @@ import ShopAlgorithms: single_machine_release_LMax
     r = [10,0,4]
     d = [18,8,19]
     @test single_machine_release_LMax(p,r,d) == (5, [2, 3, 1])
+end
+
 end

@@ -1,4 +1,5 @@
 export generate_active_schedules
+import Graphs.add_edge!
 
 mutable struct ActiveScheduleNode
     Ω::Vector{Tuple{Int,Int}}

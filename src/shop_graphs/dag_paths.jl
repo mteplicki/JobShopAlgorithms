@@ -1,4 +1,4 @@
-
+export dag_paths, topological_sort_util
 
 """
     dag_paths(graph::SimpleWeightedGraphAdj{V,U}, source::V, type::Symbol) where {V<:Integer, U<:Real}
