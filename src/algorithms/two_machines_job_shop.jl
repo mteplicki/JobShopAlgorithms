@@ -12,25 +12,16 @@ Solves the two-machine job shop problem `J2 | p_ij = 1 | Lmax` for the given `in
 - An optimal solution to the two-machine job shop problem.
 
 """
-two_machines_job_shop(instance::JobShopInstance) = two_machines_job_shop(
-    instance.n,
-    instance.m,
-    instance.n_i,
-    instance.p,
-    instance.μ,
-    instance.d
-)
-
 function two_machines_job_shop(
-    n::Int64,
-    m::Int64,
-    n_i::Vector{Int},
-    p::Vector{Vector{Int}},
-    μ::Vector{Vector{Int}},
-    d::Vector{Int}
+    instance::JobShopInstance
 )::ShopSchedule
-    all(all(p_i .== 1) for p_i in p) || throw(ArgumentError("jobs are not unit-length"))
-    m <= 2 || throw(ArgumentError("m must be less than or equal to 2"))
+    _ , timeSeconds, bytes = @timed begin 
+    n, m, n_i, p, μ, d = instance.n, instance.m, instance.n_i, instance.p, instance.μ, instance.d
+
+    processing_time_equals(1)(instance) || throw(ArgumentError("p_ij must be equal to 1 for all i and j"))
+    machine_upper_limit(2)(instance) || throw(ArgumentError("m must be less than or equal to 2"))
+    additionalInformation = Dict{String, Any}()
+
     r = sum(n_i)
     A::OffsetVector{Union{Nothing,Tuple{Int64,Int64}},Vector{Union{Nothing,Tuple{Int64,Int64}}}} = OffsetArray([nothing for i = 0:r], -1)
     B::OffsetVector{Union{Nothing,Tuple{Int64,Int64}},Vector{Union{Nothing,Tuple{Int64,Int64}}}} = OffsetArray([nothing for i = 0:r], -1)
@@ -54,13 +45,13 @@ function two_machines_job_shop(
     for k = -r+1:r-1
         while !isempty(L[k])
             O = popfirst!(L[k])
-            schedule_Oij(O, T1, T2, LAST, A, B, μ)
+            schedule_Oij!(O, T1, T2, LAST, A, B, μ)
         end
     end
     while !isempty(Z)
         i = popfirst!(Z)
         for j = 1:n_i[i]
-            schedule_Oij((i, j), T1, T2, LAST, A, B, μ)
+            schedule_Oij!((i, j), T1, T2, LAST, A, B, μ)
         end
     end
     C = [[0 for _ in 1:n_i[i] ] for i in 1:n]
@@ -72,14 +63,19 @@ function two_machines_job_shop(
             end
         end
     end
+    end
     return ShopSchedule(
-        JobShopInstance(n, m, n_i, p, μ),
+        instance,
         C,
-        maximum(LAST)
+        maximum(LAST),
+        Lmax_function;
+        timeSeconds = timeSeconds,
+        algorithm = "Two machines job shop",
+        memoryBytes = bytes
     )
 end
 
-function schedule_Oij(
+function schedule_Oij!(
     O::Tuple{Int64,Int64},
     T1::Ref{Int64},
     T2::Ref{Int64},

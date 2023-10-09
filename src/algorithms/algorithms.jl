@@ -3,6 +3,8 @@ module Algorithms
     using ..ShopAlgorithms.ShopInstances
     using ..ShopAlgorithms.ShopGraphs
     using DataStructures, Graphs, OffsetArrays
+    using ..ShopAlgorithms.Constraints
+    import ..ShopAlgorithms.ShopInstances.ObjectiveFunction
     import Graphs.add_edge!
     include("utils.jl")
     include("dpc_algorithms.jl")

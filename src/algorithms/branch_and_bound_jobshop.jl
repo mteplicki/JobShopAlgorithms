@@ -10,30 +10,27 @@ mutable struct ActiveScheduleNode
 end
 
 """
-    generate_active_schedules(instance::JobShopInstance)
+    generate_active_schedules(instance::JobShopInstance; suppress_warnings::Bool = false)
 
 Branch and Bound algorithm for the Job Shop Scheduling problem `J || Cmax` with no recirculation.
 
 # Arguments
 - `instance::JobShopInstance`: A job shop instance.
+- `suppress_warnings::Bool=false`: If `true`, warnings will not be printed.
 
 # Returns
 - `ShopSchedule`: A ShopSchedule object representing the solution to the job shop problem.
 """
-generate_active_schedules(instance::JobShopInstance) = generate_active_schedules(instance.n, instance.m, instance.n_i, instance.p, instance.μ)
-
 function generate_active_schedules(
-    n::Int64,
-    m::Int64,
-    n_i::Vector{Int},
-    p::Vector{Vector{Int}},
-    μ::Vector{Vector{Int}}
+   
+    instance::JobShopInstance;
+    suppress_warnings::Bool = false
 )
+    _ , timeSeconds, bytes = @timed begin 
+    n, m, n_i, p, μ = instance.n, instance.m, instance.n_i, instance.p, instance.μ
+    (job_recirculation()(instance) && !suppress_warnings) && @warn("The generate_active_schedules algorithm can only be used for job shop problems with no recirculation.")
+    microruns = 0
     # algorytm Branch and Bound
-
-    # sprawdzamy, czy wszystkie operacje w danym zadaniu są wykonywane na różnych maszynach - niekoniecznie, można
-    # rozluźnić ten warunek
-    # all(sort(collect(Set(x))) == sort(x) for x in μ) || throw(ArgumentError("μ must be nonrepetitive"))
 
     # pomocnicze tablice
     jobToGraphNode, graphNodeToJob, machineJobs, _ = generate_util_arrays(n, m, n_i, μ)
@@ -115,10 +112,16 @@ function generate_active_schedules(
             push!(S, nodeToPush)
         end
     end
+    end
     return ShopSchedule(
-        JobShopInstance(n, m, n_i, p, μ),
+        instance,
         selectedNode.r + p,
-        maximum(maximum.(selectedNode.r + p))
+        maximum(maximum.(selectedNode.r + p)),
+        Cmax_function;
+        algorithm = "Branch and Bound",
+        microruns = microruns,
+        timeSeconds = timeSeconds,
+        memoryBytes = bytes
     )
 end
 

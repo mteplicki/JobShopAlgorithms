@@ -9,7 +9,7 @@
             "request": "launch",
             "name": "Run main Julia file",
             "program": "${workspaceFolder}/ShopAlgorithms.jl",
-            "stopOnEntry": true,
+            "stopOnEntry": false,
             "cwd": "${workspaceFolder}",
             "juliaEnv": "${command:activeJuliaEnvironment}"
         },

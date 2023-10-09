@@ -32,16 +32,19 @@ function algorithm2_two_machines_job_shop(instance::JobShopInstance)
     T_J::Type = all(instance.n_i .< typemax(Int8)) ? Int8 : all(instance.n_i .< typemax(Int16)) ? Int16 : all(instance.n_i .< typemax(Int32)) ? Int32 : Int64
     T_P::Type = sum(sum(instance.p)) < typemax(Int8) ? Int8 : sum(sum(instance.p)) < typemax(Int16) ? Int16 : sum(sum(instance.p)) < typemax(Int32) ? Int32 : Int64
     T_M::Type = maximum(maximum(instance.μ)) < typemax(Int8) ? Int8 : maximum(maximum(instance.μ)) < typemax(Int16) ? Int16 : maximum(maximum(instance.μ)) < typemax(Int32) ? Int32 : Int64
-    return algorithm2_two_machines_job_shop(instance.n, instance.m, T_J.(instance.n_i), convert(Vector{Vector{T_P}},instance.p), convert(Vector{Vector{T_M}},instance.μ))
+    machine_equals(2)(instance) || throw(ArgumentError("The algorithm2_two_machines_job_shop algorithm can only be used for two machines job shop problems."))
+    return _algorithm2_two_machines_job_shop(instance.n, instance.m, T_J.(instance.n_i), convert(Vector{Vector{T_P}},instance.p), convert(Vector{Vector{T_M}},instance.μ), instance)
 end
 
-function algorithm2_two_machines_job_shop(
+function _algorithm2_two_machines_job_shop(
     n::Int64,
     m::Int64,
     n_i::Vector{T_J},
     p::Vector{Vector{T_P}},
-    μ::Vector{Vector{T_M}}
-) where {T_J <: Integer, T_P <: Integer, T_M <: Integer}
+    μ::Vector{Vector{T_M}},
+    instance::JobShopInstance
+) where {T_J <: Integer, T_P <: Integer, T_M <: Integer} 
+    _ , timeSeconds, bytes = @timed begin 
     r = sum(n_i)
     k = n
     # Dict() do wyznaczania poprzedników najkrótszych ścieżek w grafie
@@ -66,11 +69,15 @@ function algorithm2_two_machines_job_shop(
 
     # rekonstrukcja najkrótszej ścieżki
     C = reconstructpathalgorithm2(n, n_i, neighborhood, previous)
-
+    end
     return ShopSchedule(
-        JobShopInstance(n, m, Int64.(n_i), convert(Vector{Vector{Int64}}, p), convert(Vector{Vector{Int64}}, μ)), 
+        instance, 
         convert(Vector{Vector{Int64}}, C),
-        Int64(maximum(maximum.(C)))
+        Int64(maximum(maximum.(C))),
+        Cmax_function;
+        algorithm="Algorithm2_TwoMachinesJobShop",
+        timeSeconds=timeSeconds,
+        memoryBytes=bytes
     )
 end
 

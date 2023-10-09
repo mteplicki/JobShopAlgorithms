@@ -69,22 +69,14 @@ repetition allowed. Complexity: `O(r log r)`, where `r = sum(n_i)` is the number
 - `ShopSchedule`: A `ShopSchedule` object representing the solution to the job shop problem.
 
 """
-two_jobs_job_shop(instance::JobShopInstance) = two_jobs_job_shop(
-    instance.n,
-    instance.m,
-    instance.n_i,
-    instance.p,
-    instance.μ
-)
-
 function two_jobs_job_shop(
-    n::Int64,
-    m::Int64,
-    n_i::Vector{Int},
-    p::Vector{Vector{Int}},
-    μ::Vector{Vector{Int}},
+    instance::JobShopInstance
 )
-    n == 2 || throw(ArgumentError("n must be equal to 2"))
+    _ , timeSeconds, bytes = @timed begin 
+    n, m, n_i, p, μ = instance.n, instance.m, instance.n_i, instance.p, instance.μ
+    job_equals(2)(instance) || throw(ArgumentError("n must be equal to 2"))
+    additionalInformation = Dict{String, Any}()
+
     points, obstacles, size = createpoints(n_i, p, μ)
     network, ONumber = createnetwork(points, obstacles)
     d = OffsetArray([Int64(typemax(Int32)) for _ in 1:(length(points))], -1)
@@ -100,10 +92,16 @@ function two_jobs_job_shop(
         end
     end
     C = reconstructpath(n_i, p, obstacles, points, previous)
+    end
     return ShopSchedule(
-        JobShopInstance(n, m, n_i, p, μ), 
+        instance, 
         C,
-        max(maximum(C[1]), maximum(C[2])))
+        max(maximum(C[1]), maximum(C[2])),
+        Cmax_function;
+        algorithm = "Two jobs job shop - geometric approach",
+        timeSeconds = timeSeconds,
+        memoryBytes = bytes,
+        )
 end
 
 function createpoints(

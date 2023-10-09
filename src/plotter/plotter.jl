@@ -1,7 +1,7 @@
-module Plotter
+module Plotters
 using ..ShopAlgorithms.ShopInstances
-using PlotlyJS, DataFrames
-export plot_geometric_approach, to_dataframe, gantt_chart
+using PlotlyJS
+export plot_geometric_approach, gantt_chart
 
 """
     plot_geometric_approach(solution::ShopSchedule)
@@ -99,33 +99,6 @@ function plot_geometric_approach(solution::ShopSchedule)
         ),
         title="Two jobs plot, geometric approach"))
     return p
-end
-
-"""
-    to_dataframe(solution::ShopSchedule)
-
-Converts a `ShopSchedule` object to a `DataFrame` object.
-
-# Arguments
-- `solution::ShopSchedule`: A `ShopSchedule` object.
-
-# Returns
-- `DataFrame`: A `DataFrame` object with columns `job`, `machine`, `starttime`, and `endtime`.
-
-"""
-function to_dataframe(solution::ShopSchedule)::DataFrame
-    dataframe = DataFrame(
-        job = Int64[],
-        machine = Int64[],
-        starttime = Int64[],
-        endtime = Int64[]
-    )
-    for (index, i) in enumerate(solution.C)
-        for (index2, j) in enumerate(i)
-            push!(dataframe, [index, index2, j - solution.instance.p[index][index2], j])
-        end
-    end
-    return dataframe
 end
 
 """

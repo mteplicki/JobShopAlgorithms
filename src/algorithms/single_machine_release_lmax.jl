@@ -21,6 +21,7 @@ function single_machine_release_LMax(
     r::Vector{Int64},
     d::Vector{Int64}
 )
+    microruns = 0
     # algorytm Branch and Bound
     upperBound = typemax(Int64)
     minNode::Union{SingleMachineReleaseLMaxNode,Nothing} = nothing
@@ -28,6 +29,7 @@ function single_machine_release_LMax(
     node = SingleMachineReleaseLMaxNode([i for i in 1:length(p)], [], 0, 0)
 
     node.lowerBound = single_machine_release_LMax_pmtn([JobData(p[i], r[i], d[i], i, nothing) for i in node.jobs], node.jobsOrdered, node.time)
+    microruns += 1
     push!(stack, node)
     while !isempty(stack)
         node = pop!(stack)
@@ -56,6 +58,7 @@ function single_machine_release_LMax(
                 end
                 # obliczmy dolną granicę dla tego węzła, stosując algorytm 1|R_j,pmtn|Lmax
                 nodeCopy.lowerBound = single_machine_release_LMax_pmtn([JobData(p[i], r[i], d[i], i, nothing) for i in nodeCopy.jobs], nodeCopy.jobsOrdered, nodeCopy.time)
+                microruns += 1
                 push!(listToPush, nodeCopy)
             end
             # sortujemy listę węzłów do dodania po dolnej granicy, zaczynamy od najbardziej obiecujących kandydatów
@@ -67,7 +70,7 @@ function single_machine_release_LMax(
             end
         end
     end
-    return minNode.lowerBound, map(x -> x.index, minNode.jobsOrdered)
+    return minNode.lowerBound, map(x -> x.index, minNode.jobsOrdered), microruns
 end
 
 

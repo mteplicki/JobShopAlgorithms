@@ -14,21 +14,11 @@ Delayed Precedence Constraints algorithm. The solution of the problem is not gua
 # Returns
 - An instance of the job shop scheduling problem in the format required by the `shiftingbottleneckdpc` function. The solution is not guaranteed to be optimal.
 """
-shiftingbottleneckdpc(instance::JobShopInstance) = shiftingbottleneckdpc(
-    instance.n,
-    instance.m,
-    instance.n_i,
-    instance.p,
-    instance.μ
-)
+function shiftingbottleneckdpc(instance::JobShopInstance)
+    _ , timeSeconds, bytes = @timed begin 
+    n, m, n_i, p, μ = instance.n, instance.m, instance.n_i, instance.p, instance.μ
+    microruns = 0
 
-function shiftingbottleneckdpc(
-    n::Int64,
-    m::Int64,
-    n_i::Vector{Int},
-    p::Vector{Vector{Int}},
-    μ::Vector{Vector{Int}}
-)
     # generujemy pomocnicze tablice
     jobToGraphNode, graphNodeToJob, machineJobs, machineWithJobs = generate_util_arrays(n, m, n_i, μ)
     # zbiór krawędzi disjunktywnych, które zostały już ustalone dla maszyny `i`
@@ -52,7 +42,8 @@ function shiftingbottleneckdpc(
         # wybierz tę, dla której algorytm 1 | r_j | Lmax wskaże najdłuższy czas wykonania (Bottleneck)
         for i in setdiff(M, M_0)
             # println("M_0: $M_0, i: $i")
-            CmaxCandidate, sequenceCandidate = generate_sequence_dpc(p, r, n_i, machineJobs, jobToGraphNode, graph, Cmax, i)
+            CmaxCandidate, sequenceCandidate, add_microruns = generate_sequence_dpc(p, r, n_i, machineJobs, jobToGraphNode, graph, Cmax, i)
+            microruns += add_microruns
             if CmaxCandidate >= Cmax
                 Cmax = CmaxCandidate
                 sequence = sequenceCandidate
@@ -72,7 +63,8 @@ function shiftingbottleneckdpc(
 
             r, rGraph = generate_release_times(graph, n_i, graphNodeToJob)
             longestPath = rGraph[sum(n_i)+2]
-            Cmaxcandidate, sequenceCandidate = generate_sequence_dpc(p, r, n_i, machineJobs, jobToGraphNode, graph, Cmax, fixMachine)
+            Cmaxcandidate, sequenceCandidate, add_microruns = generate_sequence_dpc(p, r, n_i, machineJobs, jobToGraphNode, graph, Cmax, fixMachine)
+            microruns += add_microruns
             if Cmaxcandidate >= Cmax
                 graph = backUpGraph
             else
@@ -87,10 +79,16 @@ function shiftingbottleneckdpc(
         Cmax = rGraph[sum(n_i)+2]
     end
     Cmax = rGraph[sum(n_i)+2]
+    end
     return ShopSchedule(
-        JobShopInstance(n, m, n_i, p, μ),
+        instance,
         r + p,
-        Cmax
+        Cmax,
+        Cmax_function;
+        algorithm = "Shifting Bottleneck with DPC",
+        memoryBytes = bytes,
+        timeSeconds = timeSeconds,
+        microruns = microruns
     )
 end
 

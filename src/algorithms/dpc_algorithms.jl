@@ -40,13 +40,9 @@ mutable struct DPCNode
     p::Vector{Int}
     delay::Matrix{Int}
     lowerBound::Int
-    # parents::Vector{Tuple{DPCNode, Symbol}}
-    # schrage_result::Union{SchrageResult,Nothing}
-    # path_with_Jc::Union{PathWithJc,Nothing}
 end
 
 Base.:(==)(p1::Path, p2::Path) = p1.J == p2.J && p1.type == p2.type
-
 
 
 Base.:(==)(p1::PathWithJc, p2::PathWithJc) = p1.J_c == p2.J_c && p1.p == p2.p && p1.J == p2.J && p1.type == p2.type
@@ -187,27 +183,26 @@ function dpc_sequence(p::Vector{Int}, r::Vector{Int}, q::Vector{Int}, delay::Mat
     bestNode::Union{DPCNode,Nothing} = nothing
     N = PriorityQueue{DPCNode, Int}()
     map!(x->max(0,x), delay, delay)
+    microruns = 0
 
+    microruns += 1
     schrage_result::SchrageResult = schrage(p, r, q, delay)
     Cmax = objective(schrage_result.U, p, r, q, delay)
     path_with_Jc::PathWithJc = critical_path_with_jc(schrage_result, p, r, q, delay)
     J_c = path_with_Jc.J_c
     P = path_with_Jc.p
-    node = DPCNode(r, q, p, delay, h(path_with_Jc.J, r, q, p))#, [], schrage_result, path_with_Jc)
+    node = DPCNode(r, q, p, delay, h(path_with_Jc.J, r, q, p))
     f = node.lowerBound
     F = Cmax
     bestResult = schrage_result
     while J_c ≠ 0
         if path_with_Jc.type == :artificial
-            #println("artificial")
             # J_c before J_P
             node1 = deepcopy(node)
             node1.delay[J_c, P] = node1.p[J_c]
             modifiedDelay1 = [(J_c, P)]
             update_times!(node1, path_with_Jc, f; modifiedDelay=modifiedDelay1)
             node1.lowerBound = max(f,h([path_with_Jc.J; path_with_Jc.J_c], node1.r, node.q, p))
-            # push!(node1.parents, (node, :artificial_before))
-            # test_feasibility(node1.p, node1.r, node1.q, node1.delay) || throw(ArgumentError("node1 is not feasible"))
             node1.lowerBound < F && enqueue!(N, node1, node1.lowerBound)
 
             # J_c after all jobs of J
@@ -219,12 +214,9 @@ function dpc_sequence(p::Vector{Int}, r::Vector{Int}, q::Vector{Int}, delay::Mat
             end
             update_times!(node2, path_with_Jc, f; modifiedDelay=modifiedDelay2)
             node2.lowerBound = max(f,h([path_with_Jc.J; path_with_Jc.J_c], node2.r, node.q, p))
-            # push!(node2.parents, (node, :artificial_after))
-            # test_feasibility(node2.p, node2.r, node2.q, node2.delay) || throw(ArgumentError("node2 is not feasible"))
             node2.lowerBound < F && enqueue!(N, node2, node2.lowerBound)
         else # real path
-            #println("real")
-            #before all jobs of J
+            # before all jobs of J
             node1 = deepcopy(node)
             node1.q[J_c] = max(node1.q[J_c], sum(j->node1.p[j], path_with_Jc.J) + q[P])
             modifiedQ1 = [J_c]
@@ -236,8 +228,6 @@ function dpc_sequence(p::Vector{Int}, r::Vector{Int}, q::Vector{Int}, delay::Mat
             end
             update_times!(node1, path_with_Jc, f; modifiedQ=modifiedQ1, modifiedDelay=modifiedDelay1)
             node1.lowerBound = max(f,h([path_with_Jc.J; path_with_Jc.J_c], node1.r, node.q, p))
-            # push!(node1.parents, (node, :real_before))
-            # test_feasibility(node1.p, node1.r, node1.q, node1.delay) || throw(ArgumentError("node1 is not feasible"))
             node1.lowerBound < F && enqueue!(N, node1, node1.lowerBound)
 
             # after all job in J
@@ -252,41 +242,24 @@ function dpc_sequence(p::Vector{Int}, r::Vector{Int}, q::Vector{Int}, delay::Mat
             end
             update_times!(node2, path_with_Jc, f; modifiedR=modifiedR2, modifiedDelay=modifiedDelay2)
             node2.lowerBound = max(f,h([path_with_Jc.J; path_with_Jc.J_c], node2.r, node.q, p))
-            # push!(node2.parents, (node, :real_after))
-            # test_feasibility(node2.p, node2.r, node2.q, node2.delay) || throw(ArgumentError("node2 is not feasible"))
             node2.lowerBound < F && enqueue!(N, node2, node2.lowerBound)
         end
         J_c = 0
         f_γ = 0
         while J_c == 0 && !isempty(N) && F > f_γ
             node = dequeue!(N)
-            # if hash(node.delay) in [0xd8f45161ddee25a1, 0xe80807f7ea61485c, 0x79e422179cc5e8e0, 0x6f7fa9f9461b40bd, 0x0aac02db4fb465d6, 0xcae219c96fb6e9ac, 0xb28a832a7f2e4247]
-            #     println("debug")
-            # end
-            
+
+            microruns += 1
             schrage_result = schrage(node.p, node.r, node.q, node.delay)
-            # if schrage_result.U[1:10] == [10,14,13,7,8,1,6,12,11,5]
-            #     println("debug2")
-            #     # println("node.q=$(node.q), node.r=$(node.r), node.q=$(node.q), node.delay=$(node.delay)")
-            # end
+
             Cmax = schrage_result.Cmax
-            # if Cmax != objective(schrage_result.U, p, r, q, delay)
-            #     println("Cmax: $Cmax, objective: $(objective(schrage_result.U, p, r, q, delay))")
-            # end
+
             path_with_Jc = critical_path_with_jc(schrage_result, node.p, node.r, node.q, node.delay)
             J_c = path_with_Jc.J_c
             P = path_with_Jc.p
             f_γ = node.lowerBound
             f = max(f_γ, h(path_with_Jc.J, node.r, node.q, p))
-            # node.schrage_result = schrage_result
-            # node.path_with_Jc = path_with_Jc
-            # println("f_γ=$f_γ, f=$f, F=$F, J_c=$J_c, J=$(path_with_Jc.J), P=$P, result=$(schrage_result.U), Cmax=$(schrage_result.Cmax), type=$(path_with_Jc.type)")
-            if f_γ==206 && f==206 && F==209 && J_c==3 && path_with_Jc.J==[7] && schrage_result.U==[5, 4, 12, 10, 1, 15, 3, 7, 2, 6, 8, 11, 9, 14, 13] && schrage_result.Cmax==209
-                println("debug")
-            end
-            if f_γ==206 && f==206 && F==209 && J_c==7 && path_with_Jc.J==[15] && schrage_result.U==[5, 4, 3, 12, 1, 10, 7, 15, 2, 6, 8, 11, 9, 14, 13]
-                println("debug2")
-            end
+
             if Cmax < F
                 bestResult = schrage_result
                 bestNode = node
@@ -294,7 +267,7 @@ function dpc_sequence(p::Vector{Int}, r::Vector{Int}, q::Vector{Int}, delay::Mat
             end
         end
     end
-    return (F, bestResult.U)
+    return (F, bestResult.U, microruns)
 end
 
 function test_feasibility(p::Vector{Int}, r::Vector{Int}, q::Vector{Int}, delay::Matrix{Int})

@@ -26,8 +26,8 @@ function generate_sequence(p::Vector{Vector{Int}}, r::Vector{Vector{Int}}, n_i::
         
         push!(newD, Cmax + p[job[1]][job[2]] - d[sum(n_i) + 2])
     end
-    Lmax, sequence = single_machine_release_LMax(newP,newR,newD)
-    return Lmax, map(x -> machineJobs[i][x], sequence)
+    Lmax, sequence, microruns = single_machine_release_LMax(newP,newR,newD)
+    return Lmax, map(x -> machineJobs[i][x], sequence), microruns
 end
 
 function generate_sequence_dpc(p::Vector{Vector{Int}}, r::Vector{Vector{Int}}, n_i::Vector{Int}, machineJobs::Vector{Vector{Tuple{Int,Int}}}, jobToGraphNode::Vector{Vector{Int}}, graph::SimpleWeightedGraphAdj{Int, Int}, Cmax::Int64, i::Int)
@@ -42,8 +42,8 @@ function generate_sequence_dpc(p::Vector{Vector{Int}}, r::Vector{Vector{Int}}, n
             newDelay[a, b] = d[jobToGraphNode[job2[1]][job2[2]]]
         end
     end
-    Cmax, sequence = dpc_sequence(newP, newR, newQ, newDelay)
-    return Cmax, map(x -> machineJobs[i][x], sequence)
+    Cmax, sequence, microruns = dpc_sequence(newP, newR, newQ, newDelay)
+    return Cmax, map(x -> machineJobs[i][x], sequence), microruns
 end
 
 function generate_data(p::Vector{Vector{Int}}, r::Vector{Vector{Int}}, n_i::Vector{Int}, machineJobs::Vector{Vector{Tuple{Int,Int}}}, jobToGraphNode::Vector{Vector{Int}}, graph::SimpleWeightedGraphAdj{Int, Int}, Cmax::Int64, i::Int)

@@ -1,11 +1,11 @@
 module ShopAlgorithms
+    include("constraints/constraints.jl")
     include("shop_instances/shop_instances.jl")
     include("instance_loaders/instance_loaders.jl")
     include("shop_graphs/shop_graphs.jl")
     include("algorithms/algorithms.jl")
     include("plotter/plotter.jl")
-    include("constraints/constraints.jl")
-    export Algorithms, ShopInstances, InstanceLoaders, Plotter
+    export Algorithms, ShopInstances, InstanceLoaders, Plotters, Constraints
 
 
     function test1()
