@@ -16,7 +16,6 @@ function DataFrames.DataFrame(solution::ShopSchedule)::DataFrame
         name = String[],
         m = Int[],
         n = Int[],
-        n_i = Vector{Int}[],
         d = [],
         solution_id = Int[],
         algorithm = String[],
@@ -38,7 +37,6 @@ function DataFrames.DataFrame(solution::ShopSchedule)::DataFrame
                 solution.instance.name,
                 solution.instance.m,
                 solution.instance.n,
-                solution.instance.n_i,
                 solution.instance.d[index],
                 hash(solution),
                 solution.algorithm,
@@ -67,7 +65,11 @@ function dataframe_to_schedules(df::DataFrame)::Vector{ShopSchedule}
     instances = groupby(df, [:solution_id])
     schedules = []
     for instance in instances
-        name, m, n, n_i, algorithm, microruns, timeSeconds, memoryBytes = instance[1, [:name, :m, :n, :n_i, :algorithm, :microruns, :timeSeconds. :memoryBytes]]
+        name, m, n, algorithm, microruns, timeSeconds, memoryBytes = instance[1, [:name, :m, :n, :algorithm, :microruns, :timeSeconds. :memoryBytes]]
+        n_i = [0 for _ in 1:n]
+        for row in eachrow(combine(groupby(instance, [:job]), nrow => :count))
+            n_i[row[:job]] = row[:count]
+        end
         C = [[0 for _ in 1:n_i[j]] for j in 1:n]
         p = [[0 for _ in 1:n_i[j]] for j in 1:n]
         μ = [[0 for _ in 1:n_i[j]] for j in 1:n]
