@@ -1,4 +1,4 @@
-export generate_active_schedules
+export generate_active_schedules_dpc
 
 
 
@@ -15,21 +15,19 @@ Branch and Bound algorithm for the Job Shop Scheduling problem `J || Cmax` with 
 # Returns
 - `ShopSchedule`: A ShopSchedule object representing the solution to the job shop problem.
 """
-function generate_active_schedules(
+function generate_active_schedules_dpc(
     instance::JobShopInstance;
-    suppress_warnings::Bool = false,
-    machine_repetition::Bool = false
+
 )
     _ , timeSeconds, bytes = @timed begin 
     n, m, n_i, p, μ = instance.n, instance.m, instance.n_i, instance.p, instance.μ
-    (job_recirculation()(instance) && !(suppress_warnings || machine_repetition)) && @warn("The generate_active_schedules algorithm can only be used for job shop problems with no recirculation.")
     microruns = 0
     # algorytm Branch and Bound
     # pomocnicze tablice
     jobToGraphNode, graphNodeToJob, machineJobs, _ = generate_util_arrays(n, m, n_i, μ)
     upperBound = typemax(Int64)
     selectedNode::Union{ActiveScheduleNode,Nothing} = nothing
-    S = ActiveScheduleNode[]
+    S = Stack{ActiveScheduleNode}()
     graph = generate_conjuctive_graph(n, n_i, p, jobToGraphNode)
 
     node = ActiveScheduleNode(
@@ -39,7 +37,6 @@ function generate_active_schedules(
         Dict{Tuple{Int64,Int64},Bool}(),
         [[0 for _ in 1:a] for a in n_i]
     )
-    append!
 
     node.r, rGraph = generate_release_times(node.graph, n_i, graphNodeToJob)
     node.lowerBound = rGraph[sum(n_i)+2]
@@ -61,7 +58,6 @@ function generate_active_schedules(
             continue
         end
         if node.lowerBound >= upperBound
-            skippedNodes += 1
             continue
         end
         # wygeneruj zbiór Ω_prim, czyli zbiór operacji, które mogą być zaplanowane w tym węźle
@@ -95,17 +91,11 @@ function generate_active_schedules(
             newNode.lowerBound = max(newNode.lowerBound, longestPathLowerBound)
             lowerBoundCandidate = newNode.lowerBound
             
-            # poprawiamy dolną granicę, za pomocą algorytmu 1|R_j|Lmax dla każdej maszyny
-            # lub gdy machine_repetition == true, to za pomocą algorytmu 1|r_j, pmtn|Lmax
+            # poprawiamy dolną granicę, za pomocą algorytmu DPC
             for machineNumber in 1:m
-                if machine_repetition
-                    LmaxCandidate, _ = generate_sequence_pmtn(p, newNode.r, n_i, machineJobs, jobToGraphNode, newNode.graph, newNode.lowerBound, machineNumber)
-                    microruns += 1
-                else
-                    LmaxCandidate, _, new_microruns = generate_sequence(p, newNode.r, n_i, machineJobs, jobToGraphNode, newNode.graph, newNode.lowerBound, machineNumber)
-                    microruns += new_microruns
-                end
-                lowerBoundCandidate = max(newNode.lowerBound + LmaxCandidate, lowerBoundCandidate)
+                Cmaxcandidate, _ , new_microruns = generate_sequence_dpc(p, newNode.r, n_i, machineJobs, jobToGraphNode, newNode.graph, newNode.lowerBound, machineNumber)
+                microruns += new_microruns
+                lowerBoundCandidate = max(Cmaxcandidate, lowerBoundCandidate)
             end
             newNode.lowerBound = lowerBoundCandidate
             push!(listOfNodes, newNode)

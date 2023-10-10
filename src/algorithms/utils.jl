@@ -1,3 +1,21 @@
+import Graphs.add_edge!
+
+mutable struct ActiveScheduleNode
+    Ω::Vector{Tuple{Int,Int}}
+    lowerBound::Union{Int64,Nothing}
+    graph::AbstractGraph
+    scheduled::Dict{Tuple{Int64,Int64},Bool}
+    r::Vector{Vector{Int64}}
+end
+
+function generateΩ_prim(node::ActiveScheduleNode, p::Vector{Vector{Int}}, μ::Vector{Vector{Int}})
+    minimum, index = findmin(a -> p[a[1]][a[2]] + node.r[a[1]][a[2]], node.Ω)
+    i, j = node.Ω[index]
+    i_star = μ[i][j]
+    Ω_prim = filter(a -> (node.r[a[1]][a[2]] < minimum && μ[a[1]][a[2]] == i_star), node.Ω)
+    return Ω_prim
+end
+
 """ 
 generates a release times for a given disjunctive graph
 """
@@ -29,6 +47,21 @@ function generate_sequence(p::Vector{Vector{Int}}, r::Vector{Vector{Int}}, n_i::
     Lmax, sequence, microruns = single_machine_release_LMax(newP,newR,newD)
     return Lmax, map(x -> machineJobs[i][x], sequence), microruns
 end
+
+function generate_sequence_pmtn(p::Vector{Vector{Int}}, r::Vector{Vector{Int}}, n_i::Vector{Int}, machineJobs::Vector{Vector{Tuple{Int,Int}}}, jobToGraphNode::Vector{Vector{Int}}, graph::SimpleWeightedGraphAdj{Int, Int}, Cmax::Int64, i::Int)
+    newP = [p[job[1]][job[2]] for job in machineJobs[i]]
+    newD::Vector{Int} = []
+    newR = [r[job[1]][job[2]] for job in machineJobs[i]]
+    for job in machineJobs[i]
+        d = dag_paths(graph, jobToGraphNode[job[1]][job[2]], :longest)
+        
+        push!(newD, Cmax + p[job[1]][job[2]] - d[sum(n_i) + 2])
+    end
+    jobs = [JobData(newP[j], newR[j], newD[j], j, nothing) for j in 1:length(newP)]
+    Lmax = single_machine_release_LMax_pmtn(jobs,[])
+    return Lmax, 1
+end
+
 
 function generate_sequence_dpc(p::Vector{Vector{Int}}, r::Vector{Vector{Int}}, n_i::Vector{Int}, machineJobs::Vector{Vector{Tuple{Int,Int}}}, jobToGraphNode::Vector{Vector{Int}}, graph::SimpleWeightedGraphAdj{Int, Int}, Cmax::Int64, i::Int)
     newP = [p[job[1]][job[2]] for job in machineJobs[i]]

@@ -25,7 +25,7 @@ function single_machine_release_LMax(
     # algorytm Branch and Bound
     upperBound = typemax(Int64)
     minNode::Union{SingleMachineReleaseLMaxNode,Nothing} = nothing
-    stack = Stack{SingleMachineReleaseLMaxNode}()
+    stack = SingleMachineReleaseLMaxNode[]
     node = SingleMachineReleaseLMaxNode([i for i in 1:length(p)], [], 0, 0)
 
     node.lowerBound = single_machine_release_LMax_pmtn([JobData(p[i], r[i], d[i], i, nothing) for i in node.jobs], node.jobsOrdered, node.time)
@@ -41,7 +41,7 @@ function single_machine_release_LMax(
                 upperBound = node.lowerBound
                 minNode = node
             end
-        else
+        elseif node.lowerBound < upperBound
             listToPush = []
             for i in node.jobs
                 # tworzymy węzeł, w którym ustawiono jako kolejne zadanie i
@@ -61,13 +61,11 @@ function single_machine_release_LMax(
                 microruns += 1
                 push!(listToPush, nodeCopy)
             end
-            # sortujemy listę węzłów do dodania po dolnej granicy, zaczynamy od najbardziej obiecujących kandydatów
-            sort!(listToPush, by=x -> x.lowerBound)
             # filtrujemy listę węzłów do dodania, usuwamy te, które mają dolną granicę większą niż obecny upperBound
             filter!(x -> x.lowerBound < upperBound, listToPush)
-            for nodeToPush in listToPush
-                push!(stack, nodeToPush)
-            end
+            # sortujemy listę węzłów do dodania po dolnej granicy, zaczynamy od najbardziej obiecujących kandydatów
+            sort!(listToPush, by=x -> x.lowerBound, rev=true)
+            append!(stack, listToPush)
         end
     end
     return minNode.lowerBound, map(x -> x.index, minNode.jobsOrdered), microruns
