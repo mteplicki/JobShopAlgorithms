@@ -1,6 +1,25 @@
 export ShopSchedule
 
-struct ShopSchedule
+abstract type ShopResult end
+
+struct ShopError <: ShopResult
+    instance::JobShopInstance
+    algorithm::String
+    error::String
+    date::DateTime
+    metadata::Dict{String, Any}
+    function ShopError(
+        instance::AbstractShop,
+        error::String;
+        algorithm::String="",
+        metadata::Dict{String, Any}=Dict{String, Any}(),
+        date::DateTime=now()
+    )
+        new(instance, error, algorithm, date, metadata)
+    end
+end
+
+struct ShopSchedule <: ShopResult
     instance::JobShopInstance
     C::Vector{Vector{Int64}}
     objectiveValue::Int64
@@ -9,6 +28,8 @@ struct ShopSchedule
     microruns::Int
     timeSeconds::Float64
     memoryBytes::Int
+    metadata::Dict{String, Any}
+    date::DateTime
     function ShopSchedule(
         instance::AbstractShop,
         C::Vector{Vector{Int64}},
@@ -17,9 +38,11 @@ struct ShopSchedule
         algorithm::String="",
         microruns::Int=0,
         timeSeconds::Float64=0.0,
-        memoryBytes::Int=0
+        memoryBytes::Int=0,
+        metadata::Dict{String, Any}=Dict{String, Any}(),
+        date::DateTime=now()
     )
-        new(instance, C, objectiveValue, objectiveFunction, algorithm, microruns, timeSeconds, memoryBytes)
+        new(instance, C, objectiveValue, objectiveFunction, algorithm, microruns, timeSeconds, memoryBytes, metadata, date)
     end
 end
 

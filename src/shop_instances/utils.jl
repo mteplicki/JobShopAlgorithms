@@ -23,11 +23,9 @@ function check_feasability(schedule::ShopSchedule)
     _, _ , machine_jobs, _ = generate_util_arrays(schedule.instance.n, schedule.instance.m, schedule.instance.n_i, schedule.instance.μ)
     for machine in 1:schedule.instance.m
         for job1 in machine_jobs[machine]
-            if schedule.C[job1[1]][job1[2]] < schedule.instance.p[job1[1]][job1[2]]
-                return false
-            end
             for job2 in machine_jobs[machine]
                 if schedule.C[job1[1]][job1[2]] > (schedule.C[job2[1]][job2[2]] - schedule.instance.p[job2[1]][job2[2]]) && schedule.C[job1[1]][job1[2]] < schedule.C[job2[1]][job2[2]]
+                    @error "Feasability check failed: job $(job1[1]) operation $(job1[2]) is executed on machine $(machine) between job $(job2[1]) operation $(job2[2])"
                     return false
                 end
             end
@@ -35,8 +33,9 @@ function check_feasability(schedule::ShopSchedule)
     end
     for job in 1:schedule.instance.n
         for operation in 1:schedule.instance.n_i[job]
-            for operation_prim in 1:operation-1
+            for operation_prim in 1:(operation-1)
                 if schedule.C[job][operation] - schedule.instance.p[job][operation]  < schedule.C[job][operation_prim] 
+                    @error "Feasability check failed: job $(job) operation $(operation) is executed before operation $(operation_prim)"
                     return false
                 end
             end

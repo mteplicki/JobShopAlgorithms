@@ -58,7 +58,7 @@ function generate_sequence_pmtn(p::Vector{Vector{Int}}, r::Vector{Vector{Int}}, 
         push!(newD, Cmax + p[job[1]][job[2]] - d[sum(n_i) + 2])
     end
     jobs = [JobData(newP[j], newR[j], newD[j], j, nothing) for j in 1:length(newP)]
-    Lmax = single_machine_release_LMax_pmtn(jobs,[])
+    Lmax = single_machine_release_LMax_pmtn(jobs, JobData[])
     return Lmax, 1
 end
 

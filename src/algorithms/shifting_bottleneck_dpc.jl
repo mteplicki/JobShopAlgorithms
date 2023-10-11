@@ -85,7 +85,7 @@ function shiftingbottleneckdpc(instance::JobShopInstance)
         r + p,
         Cmax,
         Cmax_function;
-        algorithm = "Shifting Bottleneck with DPC",
+        algorithm = "Shifting Bottleneck - DPC",
         memoryBytes = bytes,
         timeSeconds = timeSeconds,
         microruns = microruns

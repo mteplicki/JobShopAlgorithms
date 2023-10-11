@@ -27,7 +27,7 @@ function generate_active_schedules_dpc(
     jobToGraphNode, graphNodeToJob, machineJobs, _ = generate_util_arrays(n, m, n_i, μ)
     upperBound = typemax(Int64)
     selectedNode::Union{ActiveScheduleNode,Nothing} = nothing
-    S = Stack{ActiveScheduleNode}()
+    S = ActiveScheduleNode[]
     graph = generate_conjuctive_graph(n, n_i, p, jobToGraphNode)
 
     node = ActiveScheduleNode(
@@ -94,6 +94,7 @@ function generate_active_schedules_dpc(
             # poprawiamy dolną granicę, za pomocą algorytmu DPC
             for machineNumber in 1:m
                 Cmaxcandidate, _ , new_microruns = generate_sequence_dpc(p, newNode.r, n_i, machineJobs, jobToGraphNode, newNode.graph, newNode.lowerBound, machineNumber)
+                println("Cmaxcandidate: $Cmaxcandidate, lowerBoundCandidate: $lowerBoundCandidate, machineNumber: $machineNumber")
                 microruns += new_microruns
                 lowerBoundCandidate = max(Cmaxcandidate, lowerBoundCandidate)
             end
@@ -113,7 +114,7 @@ function generate_active_schedules_dpc(
         selectedNode.r + p,
         maximum(maximum.(selectedNode.r + p)),
         Cmax_function;
-        algorithm = "Branch and Bound",
+        algorithm = "Branch and Bound - DPC",
         microruns = microruns,
         timeSeconds = timeSeconds,
         memoryBytes = bytes

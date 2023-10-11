@@ -4,13 +4,18 @@ export generate_active_schedules
 
 
 """
-    generate_active_schedules(instance::JobShopInstance; suppress_warnings::Bool = false)
+    generate_active_schedules(
+        instance::JobShopInstance;
+        suppress_warnings::Bool = false,
+        machine_repetition::Bool = false
+    )
 
 Branch and Bound algorithm for the Job Shop Scheduling problem `J || Cmax` with no recirculation.
 
 # Arguments
 - `instance::JobShopInstance`: A job shop instance.
 - `suppress_warnings::Bool=false`: If `true`, warnings will not be printed.
+- `machine_repetition::Bool=false`: If `true`, the algorithm will use the 1|r_j, pmtn|Lmax algorithm instead of 1|r_j|Lmax.
 
 # Returns
 - `ShopSchedule`: A ShopSchedule object representing the solution to the job shop problem.
@@ -123,7 +128,7 @@ function generate_active_schedules(
         selectedNode.r + p,
         maximum(maximum.(selectedNode.r + p)),
         Cmax_function;
-        algorithm = "Branch and Bound",
+        algorithm = "Branch and Bound - " * (machine_repetition ? String("1|r_j, pmtn|Lmax") : String("1|R_j|Lmax")),
         microruns = microruns,
         timeSeconds = timeSeconds,
         memoryBytes = bytes
