@@ -77,7 +77,9 @@ struct TaillardSpecification <: JobShopFileSpecification
     instance::JobShopInstance
 end
 
-function Base.read(data::IO, ::Type{StandardSpecification})
+Base.read(data::IO, ::Type{T}) where {T <: JobShopFileSpecification}  = read(data, T, "")
+
+function Base.read(data::IO, ::Type{StandardSpecification}, name::String)
     n, m = parse.(Int,split(readline(data)))
     μ = Vector{Vector{Int}}()
     p = Vector{Vector{Int}}()
@@ -90,10 +92,10 @@ function Base.read(data::IO, ::Type{StandardSpecification})
         push!(p, p_i)
     end
     n_i = map(length, μ)
-    return JobShopInstance(n, m, n_i, p, μ)
+    return JobShopInstance(n, m, n_i, p, μ; name=name)
 end
 
-function Base.read(data::IO, ::Type{TaillardSpecification})
+function Base.read(data::IO, ::Type{TaillardSpecification}, name::String)
     n, m = parse.(Int,split(readline(data)))
     μ = Vector{Vector{Int}}()
     p = Vector{Vector{Int}}()
@@ -103,11 +105,13 @@ function Base.read(data::IO, ::Type{TaillardSpecification})
     p = [parse.(Int,split(line)) for line in pLines]
     μ = [parse.(Int,split(line)) for line in μLines]
     n_i = map(length, μ)
-    return JobShopInstance(n, m, n_i, p, μ)
+    return JobShopInstance(n, m, n_i, p, μ; name=name)
 end
 
-Base.read(filename::AbstractString, ::Type{T}) where {T <: JobShopFileSpecification} = open(filename) do data
-    read(data, T)
+Base.read(filename::AbstractString, ::Type{T}) where {T <: JobShopFileSpecification} = read(filename, T, "")
+
+Base.read(filename::AbstractString, ::Type{T}, name::String) where {T <: JobShopFileSpecification} = open(filename) do data
+    read(data, T, name)
 end
 
 function Base.write(data::IO, specification::StandardSpecification)
