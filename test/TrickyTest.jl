@@ -7,11 +7,11 @@ function TrickyTest()
         rng = MersenneTwister(123)
         instance = InstanceLoaders.random_instance_generator(x,x; rng=rng, pMax = 3x, pMin = x, n_i=fill(x, x), job_recirculation=true)
         if x <= 8
-            @test (Algorithms.shiftingbottleneck(instance; suppress_warnings=true);true)
+            @test isa(Algorithms.shiftingbottleneck(instance; suppress_warnings=true), ShopInstances.ShopResult)
         else
-            @test_throws ArgumentError Algorithms.shiftingbottleneck(instance; suppress_warnings=true)
+            @test isa(Algorithms.shiftingbottleneck(instance; suppress_warnings=true), ShopInstances.ShopError)
         end
-        @test (Algorithms.shiftingbottleneckdpc(instance);true)
+        @test isa(Algorithms.shiftingbottleneckdpc(instance), ShopInstances.ShopResult)
     end
 
 end

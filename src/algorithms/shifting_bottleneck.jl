@@ -8,15 +8,11 @@ is not guaranteed to be optimal. Also, not every instance of the problem can be 
 
 # Arguments
 - `instance::JobShopInstance`: An instance of the job shop scheduling problem.
-
-# Returns
-- `ShopSchedule`: A ShopSchedule object representing the solution to the job shop problem.
 - `suppress_warnings`: If `true`, warnings will not be printed.
 
-# Throws 
-- `ArgumentError`: If `μ` is not nonrepetitive, or if during processing of the instance, in the graph 
-occurs a cycle of fixed disjunctive edges.
-
+# Returns
+- `ShopSchedule <: ShopResult`: A ShopSchedule object representing the solution to the job shop problem.
+- `ShopError <: ShopResult`: A ShopError object representing the error that occured during the execution of the algorithm.
 """
 function shiftingbottleneck(
     instance::JobShopInstance;
@@ -33,7 +29,16 @@ function shiftingbottleneck(
 
     graph = generate_conjuctive_graph(n, n_i, p, jobToGraphNode)
 
-    r, rGraph = generate_release_times(graph, n_i, graphNodeToJob)
+    r, rGraph = try
+        generate_release_times(graph, n_i, graphNodeToJob)       
+    catch error
+        if isa(error, ArgumentError)
+            return ShopError(instance, "Cycle of fixed disjunctive edges occured."; algorithm = "Shifting Bottleneck")
+        else 
+            rethrow()   
+        end
+    end
+    Cmax = rGraph[sum(n_i)+2]
     # M_0 - zbiór maszyn, dla których ustalono już krawędzie disjunktywne
     M_0 = Set{Int}()
     # M - zbiór maszyn
@@ -59,8 +64,9 @@ function shiftingbottleneck(
             catch error
                 if isa(error, ArgumentError)
                     return ShopError(instance, "Cycle of fixed disjunctive edges occured."; algorithm = "Shifting Bottleneck")
+                else 
+                    rethrow()   
                 end
-                rethrow()   
             end
         end
         M_0 = M_0 ∪ k
@@ -73,10 +79,9 @@ function shiftingbottleneck(
             for (job1, job2) in machineFixedEdges[fixMachine]
                 rem_edge!(graph, job1, job2)
             end
-
-            r, rGraph = generate_release_times(graph, n_i, graphNodeToJob)
-            longestPath = rGraph[sum(n_i)+2]
             try
+                r, rGraph = generate_release_times(graph, n_i, graphNodeToJob)
+                longestPath = rGraph[sum(n_i)+2]
                 LmaxCandidate, sequenceCandidate, add_microruns = generate_sequence(p, r, n_i, machineJobs, jobToGraphNode, graph, Cmax, fixMachine)
                 microruns += add_microruns
                 if LmaxCandidate + longestPath >= Cmax
@@ -86,14 +91,26 @@ function shiftingbottleneck(
                     Cmax = LmaxCandidate + longestPath
                     fix_disjunctive_edges(sequenceCandidate, jobToGraphNode, graph, p, fixMachine, machineFixedEdges)
                 end
-            catch e
-                return ShopError(instance, "Cycle of fixed disjunctive edges occured."; algorithm = "Shifting Bottleneck")
+            catch error
+                if isa(error, ArgumentError)
+                    return ShopError(instance, "Cycle of fixed disjunctive edges occured."; algorithm = "Shifting Bottleneck")
+                else 
+                    rethrow()   
+                end
             end
             
         end
-        r, rGraph = generate_release_times(graph, n_i, graphNodeToJob)
-        # możliwe usprawnienia - być może nie trzeba obliczać za każdym razem Cmax, tylko polegać na wskazaniu algorytmu 1 | r_j | Lmax
-        Cmax = rGraph[sum(n_i)+2]
+        try
+            r, rGraph = generate_release_times(graph, n_i, graphNodeToJob)
+            # możliwe usprawnienia - być może nie trzeba obliczać za każdym razem Cmax, tylko polegać na wskazaniu algorytmu 1 | r_j | Lmax
+            Cmax = rGraph[sum(n_i)+2]
+        catch error
+            if isa(error, ArgumentError)
+                return ShopError(instance, "Cycle of fixed disjunctive edges occured."; algorithm = "Shifting Bottleneck")
+            else 
+                rethrow()   
+            end
+        end
     end
     Cmax = rGraph[sum(n_i)+2]
     end

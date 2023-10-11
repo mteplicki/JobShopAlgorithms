@@ -6,29 +6,28 @@ export generate_active_schedules
 """
     generate_active_schedules(
         instance::JobShopInstance;
-        suppress_warnings::Bool = false,
-        machine_repetition::Bool = false
+        bounding_algorithm::Symbol=:no_pmtn
     )
 
-Branch and Bound algorithm for the Job Shop Scheduling problem `J || Cmax` with no recirculation.
+Branch and Bound algorithm for the Job Shop Scheduling problem `J | rcrc | Cmax` with recirculation.
 
 # Arguments
 - `instance::JobShopInstance`: A job shop instance.
-- `suppress_warnings::Bool=false`: If `true`, warnings will not be printed.
-- `machine_repetition::Bool=false`: If `true`, the algorithm will use the 1|r_j, pmtn|Lmax algorithm instead of 1|r_j|Lmax.
+- `bounding_algorithm::Symbol=:no_pmtn`: Algorithm used to bound the lower bound of the solution. Possible values are `:no_pmtn` for `1 | r_j | Lmax` and `:pmtn` for `1 | r_j, pmtn | Lmax`. Default value is `:no_pmtn`.
 
 # Returns
 - `ShopSchedule`: A ShopSchedule object representing the solution to the job shop problem.
 """
 function generate_active_schedules(
     instance::JobShopInstance;
-    suppress_warnings::Bool = false,
-    machine_repetition::Bool = false
+    bounding_algorithm::Symbol=:no_pmtn
 )
     _ , timeSeconds, bytes = @timed begin 
     n, m, n_i, p, μ = instance.n, instance.m, instance.n_i, instance.p, instance.μ
-    (job_recirculation()(instance) && !(suppress_warnings || machine_repetition)) && @warn("The generate_active_schedules algorithm can only be used for job shop problems with no recirculation.")
     microruns = 0
+    if bounding_algorithm ≠ :pmtn && bounding_algorithm ≠ :no_pmtn
+        throw(ArgumentError("bounding_algorithm must be either :pmtn or :no_pmtn"))
+    end
     # algorytm Branch and Bound
     # pomocnicze tablice
     jobToGraphNode, graphNodeToJob, machineJobs, _ = generate_util_arrays(n, m, n_i, μ)
@@ -103,7 +102,7 @@ function generate_active_schedules(
             # poprawiamy dolną granicę, za pomocą algorytmu 1|R_j|Lmax dla każdej maszyny
             # lub gdy machine_repetition == true, to za pomocą algorytmu 1|r_j, pmtn|Lmax
             for machineNumber in 1:m
-                if machine_repetition
+                if bounding_algorithm == :pmtn
                     LmaxCandidate, _ = generate_sequence_pmtn(p, newNode.r, n_i, machineJobs, jobToGraphNode, newNode.graph, newNode.lowerBound, machineNumber)
                     microruns += 1
                 else
@@ -128,7 +127,7 @@ function generate_active_schedules(
         selectedNode.r + p,
         maximum(maximum.(selectedNode.r + p)),
         Cmax_function;
-        algorithm = "Branch and Bound - " * (machine_repetition ? String("1|r_j, pmtn|Lmax") : String("1|R_j|Lmax")),
+        algorithm = "Branch and Bound - " * (bounding_algorithm == :pmtn ? String("1|r_j, pmtn|Lmax") : String("1|R_j|Lmax")),
         microruns = microruns,
         timeSeconds = timeSeconds,
         memoryBytes = bytes

@@ -12,11 +12,11 @@ testsWithResults = [
     end
     @testset "TwoJobsTestRandom $i" for i in 3:2:11
         instance = InstanceLoaders.random_instance_generator(2,i; rng=rng, pMax = 3i, pMin = i)
-        @test Algorithms.two_jobs_job_shop(instance).objectiveValue == Algorithms.generate_active_schedules(instance; suppress_warnings=true).objectiveValue
+        @test Algorithms.two_jobs_job_shop(instance).objectiveValue == Algorithms.generate_active_schedules(instance).objectiveValue
     end
     @testset "TwoJobsTestWithRecirculation $i" for i in 3:2:11
         instance = InstanceLoaders.random_instance_generator(2,i; rng=rng, pMax = 3i, pMin = i, n_i=[2i,2i], job_recirculation=true)
-        @test Algorithms.two_jobs_job_shop(instance).objectiveValue == Algorithms.generate_active_schedules(instance; suppress_warnings=true).objectiveValue
+        @test Algorithms.two_jobs_job_shop(instance).objectiveValue == Algorithms.generate_active_schedules(instance).objectiveValue
     end
     rng = MersenneTwister(123453)
     instance1 = InstanceLoaders.random_instance_generator(2,4; rng=rng, job_recirculation=true, n_i=[40,40], machine_repetition=true)
