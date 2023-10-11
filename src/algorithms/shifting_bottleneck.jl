@@ -48,12 +48,19 @@ function shiftingbottleneck(
         # dla każdej maszyny, dla której nie ustalono jeszcze krawędzi disjunktywnych
         # wybierz tę, dla której algorytm 1 | r_j | Lmax wskaże najdłuższy czas wykonania (Bottleneck)
         for i in setdiff(M, M_0)
-            LmaxCandidate, sequenceCandidate, add_microruns = generate_sequence(p, r, n_i, machineJobs, jobToGraphNode, graph, Cmax, i)          
-            microruns += add_microruns
-            if LmaxCandidate >= Lmax
-                Lmax = LmaxCandidate
-                sequence = sequenceCandidate
-                k = i
+            try 
+                LmaxCandidate, sequenceCandidate, add_microruns = generate_sequence(p, r, n_i, machineJobs, jobToGraphNode, graph, Cmax, i)          
+                microruns += add_microruns
+                if LmaxCandidate >= Lmax
+                    Lmax = LmaxCandidate
+                    sequence = sequenceCandidate
+                    k = i
+                end
+            catch error
+                if isa(error, ArgumentError)
+                    return ShopError(instance, "Cycle of fixed disjunctive edges occured."; algorithm = "Shifting Bottleneck")
+                end
+                rethrow()   
             end
         end
         M_0 = M_0 ∪ k
@@ -69,15 +76,20 @@ function shiftingbottleneck(
 
             r, rGraph = generate_release_times(graph, n_i, graphNodeToJob)
             longestPath = rGraph[sum(n_i)+2]
-            LmaxCandidate, sequenceCandidate, add_microruns = generate_sequence(p, r, n_i, machineJobs, jobToGraphNode, graph, Cmax, fixMachine)
-            microruns += add_microruns
-            if LmaxCandidate + longestPath >= Cmax
-                graph = backUpGraph
-            else
-                empty!(machineFixedEdges[fixMachine])
-                Cmax = LmaxCandidate + longestPath
-                fix_disjunctive_edges(sequenceCandidate, jobToGraphNode, graph, p, fixMachine, machineFixedEdges)
+            try
+                LmaxCandidate, sequenceCandidate, add_microruns = generate_sequence(p, r, n_i, machineJobs, jobToGraphNode, graph, Cmax, fixMachine)
+                microruns += add_microruns
+                if LmaxCandidate + longestPath >= Cmax
+                    graph = backUpGraph
+                else
+                    empty!(machineFixedEdges[fixMachine])
+                    Cmax = LmaxCandidate + longestPath
+                    fix_disjunctive_edges(sequenceCandidate, jobToGraphNode, graph, p, fixMachine, machineFixedEdges)
+                end
+            catch e
+                return ShopError(instance, "Cycle of fixed disjunctive edges occured."; algorithm = "Shifting Bottleneck")
             end
+            
         end
         r, rGraph = generate_release_times(graph, n_i, graphNodeToJob)
         # możliwe usprawnienia - być może nie trzeba obliczać za każdym razem Cmax, tylko polegać na wskazaniu algorytmu 1 | r_j | Lmax

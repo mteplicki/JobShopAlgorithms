@@ -1,4 +1,4 @@
-export ShopSchedule
+export ShopSchedule, ShopResult, ShopError
 
 abstract type ShopResult end
 
@@ -16,6 +16,15 @@ struct ShopError <: ShopResult
         date::DateTime=now()
     )
         new(instance, error, algorithm, date, metadata)
+    end
+end
+
+function Base.show(io::IO, instance::ShopError)
+    println(io, "Shop error: $(instance.instance.name)")
+    println(io, "error: $(instance.error)")
+    println(io, "algorithm: $(instance.algorithm)")
+    for (key, value) in instance.metadata
+        println(io, "$key: $value")
     end
 end
 
@@ -55,4 +64,7 @@ function Base.show(io::IO, instance::ShopSchedule)
     println(io, "microruns: $(instance.microruns)")
     println(io, "timeSeconds: $(instance.timeSeconds)")
     println(io, "memoryBytes: $(instance.memoryBytes)")
+    for (key, value) in instance.metadata
+        println(io, "$key: $value")
+    end
 end
