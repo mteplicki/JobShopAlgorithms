@@ -16,10 +16,13 @@ end
 """
 1|R_j|Lmax
 """
+single_machine_release_LMax(p::Vector{Int64}, r::Vector{Int64}, d::Vector{Int64}) = single_machine_release_LMax(p, r, d, nothing)
+
 function single_machine_release_LMax(
     p::Vector{Int64},
     r::Vector{Int64},
-    d::Vector{Int64}
+    d::Vector{Int64},
+    yield_ref::Union{Nothing,Ref{Float64}}
 )
     microruns = 0
     # algorytm Branch and Bound
@@ -33,6 +36,7 @@ function single_machine_release_LMax(
     push!(stack, node)
     while !isempty(stack)
         node = pop!(stack)
+        try_yield(yield_ref)
 
         if length(node.jobs) == 0
             # jeśli znaleziono węzeł końcowy, to sprawdzamy czy jego wartość jest mniejsza niż obecna górna granica algorytmu
@@ -51,6 +55,7 @@ function single_machine_release_LMax(
                     nothing,
                     max(r[i], node.time) + p[i]
                 )
+                
                 # jeśli r_i >= min{max(r_j, t) + p_j} to nie dodajemy do listy - intuicyjnie, jeśli jest spełniona ta równość
                 # to wtedy przed zadaniem i można jeszcze wykonać jakieś zadanie j i nie pogorszyć rozwiązania
                 if r[i] >= minimum([max(r[j], node.time) + p[j] for j in nodeCopy.jobs]; init=typemax(Int64))
@@ -58,6 +63,7 @@ function single_machine_release_LMax(
                 end
                 # obliczmy dolną granicę dla tego węzła, stosując algorytm 1|R_j,pmtn|Lmax
                 nodeCopy.lowerBound = single_machine_release_LMax_pmtn([JobData(p[i], r[i], d[i], i, nothing) for i in nodeCopy.jobs], nodeCopy.jobsOrdered, nodeCopy.time)
+                
                 microruns += 1
                 push!(listToPush, nodeCopy)
             end

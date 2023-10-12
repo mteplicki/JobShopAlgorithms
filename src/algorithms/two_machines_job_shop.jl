@@ -1,12 +1,13 @@
 export two_machines_job_shop
 
 """
-    twomachinesjobshop(instance::JobShopInstance)
+    two_machines_job_shop(instance::JobShopInstance; yielding::Bool=false)
 
 Solves the two-machine job shop problem `J2 | p_ij = 1 | Lmax` for the given `instance`. Complexity is `O(r)`, where `r = sum(n_i)` is the number of operations.
 
 # Arguments
 - `instance::JobShopInstance`: An instance of the two-machine job shop problem.
+- `yielding::Bool=false`: If `true`, the algorithm will yield after each iteration. This is useful for timeouting the algorithm.
 
 # Returns
 - An optimal solution to the two-machine job shop problem.

@@ -23,7 +23,10 @@ julia> plot_geometric_approach(solution)
 ```
 
 """
-function plot_geometric_approach(solution::ShopSchedule)
+function plot_geometric_approach(solution::ShopSchedule; title::Union{Nothing,String}=nothing, width=800, height=800, aspectmode="auto")
+    if title === nothing
+        title = solution.instance.name
+    end
     rectangle(w, h, x, y, machine::String) = scatter(
         x=x .+ [0,w,w,0,0], 
         y=y .+ [0,0,h,h,0], 
@@ -84,19 +87,50 @@ function plot_geometric_approach(solution::ShopSchedule)
         end
         deleteat!(startTime[job], 1)
     end
+
+    xticktext = []
+    xtickvals = []
+    for (index, (pos1,pos2)) in enumerate(zip(a[1], Iterators.drop(a[1], 1)))
+        push!(xticktext, "M$(solution.instance.μ[1][index])")
+        push!(xtickvals, (pos1+pos2)/2)
+    end
+    yticktext = []
+    ytickvals = []
+    for (index, (pos1,pos2)) in enumerate(zip(a[2], Iterators.drop(a[2], 1)))
+        push!(yticktext, "M$(solution.instance.μ[2][index])")
+        push!(ytickvals, (pos1+pos2)/2)
+    end
+
+    xtickvalsprim = a[1]
+    ytickvalsprim = a[2]
+
+
     p = plot(traces, Layout(
         xaxis = attr(
+            tickmode="array",
+            ticktext=xticktext,
+            tickvals=xtickvals,
             range=[-1, range1 + 1],
+            showgrid=false,
             title = attr(
                 text = "Job 1"
             )
         ),
         yaxis = attr(
+            tickmode="array",
+            ticktext=yticktext,
+            tickvals=ytickvals,
             range=[-1, range2 + 1],
+            showgrid=false,
             title = attr(
                 text = "Job 2"
             )
         ),
+        scene = attr(
+            aspectmode=aspectmode
+        ),
+        width=width,
+        height=height,
         title="Two jobs plot, geometric approach"))
     return p
 end
@@ -112,8 +146,11 @@ Create a Gantt chart for a given `ShopSchedule` solution.
 # Returns
 - A plot of the solution using a Gantt chart.
 """
-function gantt_chart(solution::ShopSchedule)
-    p = plot([
+function gantt_chart(solution::ShopSchedule; kwargs...)
+    kwargs = Dict(kwargs)
+
+    traces = if haskey(kwargs, :show_blocks) 
+        [[
         bar(
             y = string.(solution.instance.μ[i]), 
             x = solution.instance.p[i], 
@@ -122,8 +159,30 @@ function gantt_chart(solution::ShopSchedule)
             text = ["($i, $k)" for k in 1:solution.instance.n_i[i]],
             textposition = "inside",
             insidetextanchor = "middle",
-            orientation="h") for i in 1:solution.instance.n
-    ],
+            orientation="h") for i in 1:solution.instance.n]; 
+        [scatter(
+            x=[x1,x1],
+            y=[0.5,2.5],
+            mode="lines",
+            color="black",
+            showlegend=false
+        ) for x1 in [0,6,19,58,99] ]
+    ]
+    else
+        [
+        bar(
+            y = string.(solution.instance.μ[i]), 
+            x = solution.instance.p[i], 
+            base = solution.C[i] - solution.instance.p[i], 
+            name = "Job $i", 
+            text = ["($i, $k)" for k in 1:solution.instance.n_i[i]],
+            textposition = "inside",
+            insidetextanchor = "middle",
+            orientation="h") for i in 1:solution.instance.n]
+    end
+
+    p = plot(traces,
+
     Layout(
         barmode="stack", 
         yaxis=attr(
@@ -131,11 +190,30 @@ function gantt_chart(solution::ShopSchedule)
             title = attr(
                 text = "Machine"
             ),
-            categoryorder = "category descending"
+            categoryorder = "category descending",
+            range = [0.5,2.5]
         ),
-        xaxis_title="Time",
+        xaxis = if haskey(kwargs, :show_blocks) 
+        attr(
+            ticktext=["t$i" for i in 0:4],
+            tickvals=[0,6,19,58,99],
+            # tickson="boundaries",
+            tickwidth=3,
+            tickcolor="#000000"
+
+
+        ) 
+        else 
+            attr(
+            title=attr(
+                text="Time"
+            )
+        )
+        end
+        ,
         title="Gantt chart"))
     return p
 end
+
 
 end

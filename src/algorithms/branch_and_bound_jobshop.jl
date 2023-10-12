@@ -6,7 +6,8 @@ export generate_active_schedules
 """
     generate_active_schedules(
         instance::JobShopInstance;
-        bounding_algorithm::Symbol=:no_pmtn
+        bounding_algorithm::Symbol=:no_pmtn,
+        yielding::Bool=false
     )
 
 Branch and Bound algorithm for the Job Shop Scheduling problem `J | rcrc | Cmax` with recirculation.
@@ -14,7 +15,7 @@ Branch and Bound algorithm for the Job Shop Scheduling problem `J | rcrc | Cmax`
 # Arguments
 - `instance::JobShopInstance`: A job shop instance.
 - `bounding_algorithm::Symbol=:no_pmtn`: Algorithm used to bound the lower bound of the solution. Possible values are `:no_pmtn` for `1 | r_j | Lmax` and `:pmtn` for `1 | r_j, pmtn | Lmax`. Default value is `:no_pmtn`.
-
+- `yielding::Bool=false`: If `true`, the algorithm will yield after each iteration. This is useful for timeouting the algorithm.
 # Returns
 - `ShopSchedule`: A ShopSchedule object representing the solution to the job shop problem.
 """

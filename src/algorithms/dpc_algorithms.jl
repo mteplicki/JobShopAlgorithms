@@ -178,6 +178,8 @@ function check_sequence(schedule::Vector, p, r, n_i, graph, jobToGraphNode)
     return objective2(newP, newR, newQ, delay)
 end
 
+dpc_sequence(p::Vector{Int}, r::Vector{Int}, q::Vector{Int}, delay::Matrix{Int}) = dpc_sequence(p, r, q, delay, nothing)
+
 function dpc_sequence(p::Vector{Int}, r::Vector{Int}, q::Vector{Int}, delay::Matrix{Int}, yield_ref)
     bestResult::Union{SchrageResult,Nothing} = nothing
     bestNode::Union{DPCNode,Nothing} = nothing

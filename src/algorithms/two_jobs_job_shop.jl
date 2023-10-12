@@ -57,13 +57,14 @@ function Base.Order.lt(::SweepOrdering, p1::Point, p2::Point)
 end
 
 """
-    two_jobs_job_shop(instance::JobShopInstance)
+    two_jobs_job_shop(instance::JobShopInstance; yielding::Bool=false)
 
 Solves the two jobs job shop `J | n=2 | Cmax` problem for a given `instance` of `JobShopInstance` with recirculation and machine
 repetition allowed. Complexity: `O(r log r)`, where `r = sum(n_i)` is the number of operations.
 
 # Arguments
 - `instance::JobShopInstance`: An instance of the job shop problem.
+- `yielding::Bool=false`: If `true`, the algorithm will yield after each iteration. This is useful for timeouting the algorithm.
 
 # Returns
 - `ShopSchedule`: A `ShopSchedule` object representing the solution to the job shop problem.

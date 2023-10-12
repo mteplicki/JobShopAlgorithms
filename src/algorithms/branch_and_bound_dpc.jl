@@ -4,13 +4,13 @@ export generate_active_schedules_dpc
 
 
 """
-    generate_active_schedules(instance::JobShopInstance; suppress_warnings::Bool = false)
+    generate_active_schedules(instance::JobShopInstance; yielding::Bool=false)
 
 Branch and Bound algorithm for the Job Shop Scheduling problem `J || Cmax` with no recirculation.
 
 # Arguments
 - `instance::JobShopInstance`: A job shop instance.
-- `suppress_warnings::Bool=false`: If `true`, warnings will not be printed.
+- `yielding::Bool=false`: If `true`, the algorithm will yield after each iteration. This is useful for timeouting the algorithm.
 
 # Returns
 - `ShopSchedule`: A ShopSchedule object representing the solution to the job shop problem.

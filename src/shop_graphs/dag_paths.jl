@@ -17,7 +17,7 @@ Returns all paths from the source vertex to all other vertices in a directed acy
 # Throws
 - `ArgumentError`: If the type is not `:shortest` or `:longest`, or if the graph is not a DAG.
 """
-function dag_paths(graph::SimpleWeightedGraphAdj{V,U}, source::V, type::Symbol; yield_ref::Union{Nothing,Ref}=nothing) where {V<:Integer, U<:Real} 
+function dag_paths(graph::SimpleWeightedGraphAdj{V,U}, source::V, type::Symbol) where {V<:Integer, U<:Real} 
     
     if type == :longest
         dist = fill(typemin(V), length(graph.vertices))
@@ -46,7 +46,6 @@ function dag_paths(graph::SimpleWeightedGraphAdj{V,U}, source::V, type::Symbol; 
                 dist[edge.dst] = min(dist[edge.dst], dist[v] + edge.weight)
             end
         end
-        isnothing(yield_ref) || try_yield(yield_ref)
     end
 
     

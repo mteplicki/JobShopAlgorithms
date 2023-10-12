@@ -3,13 +3,14 @@ export shiftingbottleneckdpc
 
 
 """
-    shiftingbottleneckdpc(instance::JobShopInstance)
+    shiftingbottleneckdpc(instance::JobShopInstance; yielding::Bool=false)
 
 Solves the job shop scheduling `J || Cmax` problem with recirculation allowed using the Shifting Bottleneck algorithm with
 Delayed Precedence Constraints algorithm. The solution of the problem is not guaranteed to be optimal.
 
 # Arguments
 - `instance::JobShopInstance`: An instance of the job shop scheduling problem.
+- `yielding::Bool=false`: If `true`, the algorithm will yield after each iteration. This is useful for timeouting the algorithm.
 
 # Returns
 - An instance of the job shop scheduling problem in the format required by the `shiftingbottleneckdpc` function. The solution is not guaranteed to be optimal.

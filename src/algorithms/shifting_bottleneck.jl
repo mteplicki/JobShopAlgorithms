@@ -1,7 +1,7 @@
 export shiftingbottleneck
 
 """
-    shiftingbottleneck(instance::JobShopInstance;suppress_warnings::Bool = false)
+    shiftingbottleneck(instance::JobShopInstance; suppress_warnings::Bool = false, yielding::Bool=false)
 
 Solves the job shop scheduling `J || Cmax` problem with no job recirculation using the Shifting Bottleneck algorithm. The solution of the problem 
 is not guaranteed to be optimal. Also, not every instance of the problem can be solved using this algorithm.
@@ -9,6 +9,7 @@ is not guaranteed to be optimal. Also, not every instance of the problem can be 
 # Arguments
 - `instance::JobShopInstance`: An instance of the job shop scheduling problem.
 - `suppress_warnings`: If `true`, warnings will not be printed.
+- `yielding::Bool=false`: If `true`, the algorithm will yield after each iteration. This is useful for timeouting the algorithm.
 
 # Returns
 - `ShopSchedule <: ShopResult`: A ShopSchedule object representing the solution to the job shop problem.
