@@ -1,5 +1,18 @@
 import Graphs.add_edge!
 
+export YIELD_TIME
+YIELD_TIME = 0.5
+
+function try_yield(last_time::Union{Ref{Float64}, Nothing})
+    if isnothing(last_time)
+        return
+    end
+    if time() - last_time[] > YIELD_TIME
+        yield()
+        last_time[] = time()
+    end
+end
+
 mutable struct ActiveScheduleNode
     Ω::Vector{Tuple{Int,Int}}
     lowerBound::Union{Int64,Nothing}
@@ -35,7 +48,7 @@ end
 """
     Generate a sequence of jobs on a given machine, with a 1|r_j|Lmax criterion
 """
-function generate_sequence(p::Vector{Vector{Int}}, r::Vector{Vector{Int}}, n_i::Vector{Int}, machineJobs::Vector{Vector{Tuple{Int,Int}}}, jobToGraphNode::Vector{Vector{Int}}, graph::SimpleWeightedGraphAdj{Int, Int}, Cmax::Int64, i::Int)
+function generate_sequence(p::Vector{Vector{Int}}, r::Vector{Vector{Int}}, n_i::Vector{Int}, machineJobs::Vector{Vector{Tuple{Int,Int}}}, jobToGraphNode::Vector{Vector{Int}}, graph::SimpleWeightedGraphAdj{Int, Int}, Cmax::Int64, i::Int, yield_ref)
     newP = [p[job[1]][job[2]] for job in machineJobs[i]]
     newD::Vector{Int} = []
     newR = [r[job[1]][job[2]] for job in machineJobs[i]]
@@ -45,10 +58,11 @@ function generate_sequence(p::Vector{Vector{Int}}, r::Vector{Vector{Int}}, n_i::
         push!(newD, Cmax + p[job[1]][job[2]] - d[sum(n_i) + 2])
     end
     Lmax, sequence, microruns = single_machine_release_LMax(newP,newR,newD)
+    isnothing(yield_ref) || try_yield(yield_ref)
     return Lmax, map(x -> machineJobs[i][x], sequence), microruns
 end
 
-function generate_sequence_pmtn(p::Vector{Vector{Int}}, r::Vector{Vector{Int}}, n_i::Vector{Int}, machineJobs::Vector{Vector{Tuple{Int,Int}}}, jobToGraphNode::Vector{Vector{Int}}, graph::SimpleWeightedGraphAdj{Int, Int}, Cmax::Int64, i::Int)
+function generate_sequence_pmtn(p::Vector{Vector{Int}}, r::Vector{Vector{Int}}, n_i::Vector{Int}, machineJobs::Vector{Vector{Tuple{Int,Int}}}, jobToGraphNode::Vector{Vector{Int}}, graph::SimpleWeightedGraphAdj{Int, Int}, Cmax::Int64, i::Int, yield_ref)
     newP = [p[job[1]][job[2]] for job in machineJobs[i]]
     newD::Vector{Int} = []
     newR = [r[job[1]][job[2]] for job in machineJobs[i]]
@@ -59,11 +73,12 @@ function generate_sequence_pmtn(p::Vector{Vector{Int}}, r::Vector{Vector{Int}}, 
     end
     jobs = [JobData(newP[j], newR[j], newD[j], j, nothing) for j in 1:length(newP)]
     Lmax = single_machine_release_LMax_pmtn(jobs, JobData[])
+    isnothing(yield_ref) || try_yield(yield_ref)
     return Lmax, 1
 end
 
 
-function generate_sequence_dpc(p::Vector{Vector{Int}}, r::Vector{Vector{Int}}, n_i::Vector{Int}, machineJobs::Vector{Vector{Tuple{Int,Int}}}, jobToGraphNode::Vector{Vector{Int}}, graph::SimpleWeightedGraphAdj{Int, Int}, Cmax::Int64, i::Int)
+function generate_sequence_dpc(p::Vector{Vector{Int}}, r::Vector{Vector{Int}}, n_i::Vector{Int}, machineJobs::Vector{Vector{Tuple{Int,Int}}}, jobToGraphNode::Vector{Vector{Int}}, graph::SimpleWeightedGraphAdj{Int, Int}, Cmax::Int64, i::Int, yield_ref)
     newP = [p[job[1]][job[2]] for job in machineJobs[i]]
     newQ::Vector{Int} = []
     newR = [r[job[1]][job[2]] for job in machineJobs[i]]
@@ -75,7 +90,7 @@ function generate_sequence_dpc(p::Vector{Vector{Int}}, r::Vector{Vector{Int}}, n
             newDelay[a, b] = d[jobToGraphNode[job2[1]][job2[2]]]
         end
     end
-    Cmax, sequence, microruns = dpc_sequence(newP, newR, newQ, newDelay)
+    Cmax, sequence, microruns = dpc_sequence(newP, newR, newQ, newDelay, yield_ref)
     return Cmax, map(x -> machineJobs[i][x], sequence), microruns
 end
 

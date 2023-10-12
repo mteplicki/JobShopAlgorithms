@@ -70,15 +70,17 @@ repetition allowed. Complexity: `O(r log r)`, where `r = sum(n_i)` is the number
 
 """
 function two_jobs_job_shop(
-    instance::JobShopInstance
+    instance::JobShopInstance;
+    yielding::Bool = false
 )
     _ , timeSeconds, bytes = @timed begin 
     n, m, n_i, p, μ = instance.n, instance.m, instance.n_i, instance.p, instance.μ
     job_equals(2)(instance) || throw(ArgumentError("n must be equal to 2"))
     additionalInformation = Dict{String, Any}()
-
+    yield_ref = yielding ? Ref(time()) : nothing
     points, obstacles, size = createpoints(n_i, p, μ)
-    network, ONumber = createnetwork(points, obstacles)
+    try_yield(yield_ref)
+    network, ONumber = createnetwork(points, obstacles, yield_ref)
     d = OffsetArray([Int64(typemax(Int32)) for _ in 1:(length(points))], -1)
     previous::Vector{Union{Nothing, Int}} = [nothing for _ in 1:(length(points)-1)]
     
@@ -90,8 +92,10 @@ function two_jobs_job_shop(
                 previous[successor.successorNumber] = successor.from
             end
         end
+        try_yield(yield_ref)
     end
     C = reconstructpath(n_i, p, obstacles, points, previous)
+    try_yield(yield_ref)
     end
     return ShopSchedule(
         instance, 
@@ -147,7 +151,8 @@ end
 
 function createnetwork(
     pointsUnsorted::OffsetVector{Point},
-    obstacles::Vector{Obstacle}
+    obstacles::Vector{Obstacle},
+    yield_ref
 )
     network = OffsetVector([NetworkNode(Vector{Successor}()) for _ in 1:length(pointsUnsorted)], -1)
     
@@ -159,6 +164,7 @@ function createnetwork(
     ONumber = 0
     for point in points
         #pole do debugowania
+        try_yield(yield_ref)
         if point.type == F
             continue
         end

@@ -30,12 +30,12 @@ Algorithm to solve a `J2 | n=k | Cmax` problem, with complexity `O(r^k)`, where 
 - `jobShopSchedule::ShopSchedule`: A ShopSchedule object representing the solution to the two machines job shop problem.
 
 """
-function algorithm2_two_machines_job_shop(instance::JobShopInstance)
+function algorithm2_two_machines_job_shop(instance::JobShopInstance; yielding=false)
     T_J::Type = all(instance.n_i .< typemax(Int8)) ? Int8 : all(instance.n_i .< typemax(Int16)) ? Int16 : all(instance.n_i .< typemax(Int32)) ? Int32 : Int64
     T_P::Type = sum(sum(instance.p)) < typemax(Int8) ? Int8 : sum(sum(instance.p)) < typemax(Int16) ? Int16 : sum(sum(instance.p)) < typemax(Int32) ? Int32 : Int64
     T_M::Type = maximum(maximum(instance.μ)) < typemax(Int8) ? Int8 : maximum(maximum(instance.μ)) < typemax(Int16) ? Int16 : maximum(maximum(instance.μ)) < typemax(Int32) ? Int32 : Int64
     machine_equals(2)(instance) || throw(ArgumentError("The algorithm2_two_machines_job_shop algorithm can only be used for two machines job shop problems."))
-    return _algorithm2_two_machines_job_shop(instance.n, instance.m, T_J.(instance.n_i), convert(Vector{Vector{T_P}},instance.p), convert(Vector{Vector{T_M}},instance.μ), instance)
+    return _algorithm2_two_machines_job_shop(instance.n, instance.m, T_J.(instance.n_i), convert(Vector{Vector{T_P}},instance.p), convert(Vector{Vector{T_M}},instance.μ), instance, yielding)
 end
 
 function _algorithm2_two_machines_job_shop(
@@ -44,9 +44,11 @@ function _algorithm2_two_machines_job_shop(
     n_i::Vector{T_J},
     p::Vector{Vector{T_P}},
     μ::Vector{Vector{T_M}},
-    instance::JobShopInstance
+    instance::JobShopInstance,
+    yielding::Union{Bool, Nothing}
 ) where {T_J <: Integer, T_P <: Integer, T_M <: Integer} 
     _ , timeSeconds, bytes = @timed begin 
+    yield_ref = yielding ? Ref(time()) : nothing
     metadata = Dict{String, Any}()
     r = sum(n_i)
     k = n
@@ -59,7 +61,7 @@ function _algorithm2_two_machines_job_shop(
     sizehint!(d, sizehint)
     d[zeros(T_P, n)] = T_P(0)
     # generowanie grafu bloków operacji
-    neighborhood, neighborhood_dag = two_machines_job_shop_generate_network(n, m, n_i, p, μ)
+    neighborhood, neighborhood_dag = two_machines_job_shop_generate_network(n, m, n_i, p, μ, yield_ref)
     # wyznaczenie kombinacji bloków operacji o najkrótszej długości
     for node in neighborhood_dag
         succesors = neighborhood[node]
@@ -68,12 +70,13 @@ function _algorithm2_two_machines_job_shop(
                 d[successor.j] = d[node] + maximum(successor.t)
                 previous[successor.j] = node
             end
-            
         end
+        isnothing(yield_ref) || try_yield(yield_ref)
     end
 
     # rekonstrukcja najkrótszej ścieżki
     C = reconstructpathalgorithm2(n, n_i, neighborhood, previous)
+    isnothing(yield_ref) || try_yield(yield_ref)
     metadata["constructed_nodes"] = length(neighborhood)
     end
     return ShopSchedule(
@@ -102,7 +105,8 @@ function two_machines_job_shop_generate_network(
     m::Int64,
     n_i::Vector{T_J},
     p::Vector{Vector{T_P}},
-    μ::Vector{Vector{T_M}}
+    μ::Vector{Vector{T_M}},
+    yield_ref::Union{Ref,Nothing}
 ) where {T_J <: Integer, T_P <: Integer, T_M <: Integer}
     # Dict() wyznaczający sąsiadów w grafie bloków operacji 
     neighborhood_dag = Vector{T_J}[]
@@ -126,6 +130,7 @@ function two_machines_job_shop_generate_network(
         node = pop!(stack)
         # generowanie sąsiadów bloku
         barNodes = two_machines_job_shop_generate_block_graph(node, n, m, n_i, p, μ)
+        try_yield(yield_ref)
         neighborhood[node] = barNodes
         push!(neighborhood_dag, node)
         # jeśli jakiś wierzchołek jeszcze nie został wyznaczony, dodaj go do stosu

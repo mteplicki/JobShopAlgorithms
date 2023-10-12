@@ -20,11 +20,13 @@ Branch and Bound algorithm for the Job Shop Scheduling problem `J | rcrc | Cmax`
 """
 function generate_active_schedules(
     instance::JobShopInstance;
-    bounding_algorithm::Symbol=:no_pmtn
+    bounding_algorithm::Symbol=:no_pmtn,
+    yielding::Bool = false
 )
     _ , timeSeconds, bytes = @timed begin 
     n, m, n_i, p, μ = instance.n, instance.m, instance.n_i, instance.p, instance.μ
     microruns = 0
+    yield_ref = yielding ? Ref(time()) : nothing
     if bounding_algorithm ≠ :pmtn && bounding_algorithm ≠ :no_pmtn
         throw(ArgumentError("bounding_algorithm must be either :pmtn or :no_pmtn"))
     end
@@ -52,6 +54,7 @@ function generate_active_schedules(
     terminalNodes = 0
     while !isempty(S)
         node = pop!(S)
+        try_yield(yield_ref)
         # jeżli wszystkie operacje zostały zaplanowane, to sprawdzamy, czy wartość tego węzła jest mniejsza niż obecna górna granica algorytmu
         if isempty(node.Ω)
             terminalNodes += 1
@@ -103,10 +106,10 @@ function generate_active_schedules(
             # lub gdy machine_repetition == true, to za pomocą algorytmu 1|r_j, pmtn|Lmax
             for machineNumber in 1:m
                 if bounding_algorithm == :pmtn
-                    LmaxCandidate, _ = generate_sequence_pmtn(p, newNode.r, n_i, machineJobs, jobToGraphNode, newNode.graph, newNode.lowerBound, machineNumber)
+                    LmaxCandidate, _ = generate_sequence_pmtn(p, newNode.r, n_i, machineJobs, jobToGraphNode, newNode.graph, newNode.lowerBound, machineNumber, yield_ref)
                     microruns += 1
                 else
-                    LmaxCandidate, _, new_microruns = generate_sequence(p, newNode.r, n_i, machineJobs, jobToGraphNode, newNode.graph, newNode.lowerBound, machineNumber)
+                    LmaxCandidate, _, new_microruns = generate_sequence(p, newNode.r, n_i, machineJobs, jobToGraphNode, newNode.graph, newNode.lowerBound, machineNumber, yield_ref)
                     microruns += new_microruns
                 end
                 lowerBoundCandidate = max(newNode.lowerBound + LmaxCandidate, lowerBoundCandidate)

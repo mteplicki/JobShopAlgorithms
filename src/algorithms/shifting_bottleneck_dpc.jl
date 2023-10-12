@@ -14,11 +14,11 @@ Delayed Precedence Constraints algorithm. The solution of the problem is not gua
 # Returns
 - An instance of the job shop scheduling problem in the format required by the `shiftingbottleneckdpc` function. The solution is not guaranteed to be optimal.
 """
-function shiftingbottleneckdpc(instance::JobShopInstance)
+function shiftingbottleneckdpc(instance::JobShopInstance; yielding::Bool = false)
     _ , timeSeconds, bytes = @timed begin 
     n, m, n_i, p, μ = instance.n, instance.m, instance.n_i, instance.p, instance.μ
     microruns = 0
-
+    yield_ref = yielding ? Ref(time()) : nothing
     # generujemy pomocnicze tablice
     jobToGraphNode, graphNodeToJob, machineJobs, machineWithJobs = generate_util_arrays(n, m, n_i, μ)
     # zbiór krawędzi disjunktywnych, które zostały już ustalone dla maszyny `i`
@@ -42,7 +42,7 @@ function shiftingbottleneckdpc(instance::JobShopInstance)
         # wybierz tę, dla której algorytm 1 | r_j | Lmax wskaże najdłuższy czas wykonania (Bottleneck)
         for i in setdiff(M, M_0)
             # println("M_0: $M_0, i: $i")
-            CmaxCandidate, sequenceCandidate, add_microruns = generate_sequence_dpc(p, r, n_i, machineJobs, jobToGraphNode, graph, Cmax, i)
+            CmaxCandidate, sequenceCandidate, add_microruns = generate_sequence_dpc(p, r, n_i, machineJobs, jobToGraphNode, graph, Cmax, i, yield_ref)
             microruns += add_microruns
             if CmaxCandidate >= Cmax
                 Cmax = CmaxCandidate
@@ -63,7 +63,7 @@ function shiftingbottleneckdpc(instance::JobShopInstance)
 
             r, rGraph = generate_release_times(graph, n_i, graphNodeToJob)
             longestPath = rGraph[sum(n_i)+2]
-            Cmaxcandidate, sequenceCandidate, add_microruns = generate_sequence_dpc(p, r, n_i, machineJobs, jobToGraphNode, graph, Cmax, fixMachine)
+            Cmaxcandidate, sequenceCandidate, add_microruns = generate_sequence_dpc(p, r, n_i, machineJobs, jobToGraphNode, graph, Cmax, fixMachine, yield_ref)
             microruns += add_microruns
             if Cmaxcandidate >= Cmax
                 graph = backUpGraph

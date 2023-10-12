@@ -13,11 +13,12 @@ Solves the two-machine job shop problem `J2 | p_ij = 1 | Lmax` for the given `in
 
 """
 function two_machines_job_shop(
-    instance::JobShopInstance
+    instance::JobShopInstance;
+    yielding::Bool = false
 )::ShopSchedule
     _ , timeSeconds, bytes = @timed begin 
     n, m, n_i, p, μ, d = instance.n, instance.m, instance.n_i, instance.p, instance.μ, instance.d
-
+    yield_ref = yielding ? Ref(time()) : nothing
     processing_time_equals(1)(instance) || throw(ArgumentError("p_ij must be equal to 1 for all i and j"))
     machine_upper_limit(2)(instance) || throw(ArgumentError("m must be less than or equal to 2"))
     additionalInformation = Dict{String, Any}()
@@ -46,12 +47,14 @@ function two_machines_job_shop(
         while !isempty(L[k])
             O = popfirst!(L[k])
             schedule_Oij!(O, T1, T2, LAST, A, B, μ)
+            try_yield(yield_ref)
         end
     end
     while !isempty(Z)
         i = popfirst!(Z)
         for j = 1:n_i[i]
             schedule_Oij!((i, j), T1, T2, LAST, A, B, μ)
+            try_yield(yield_ref)
         end
     end
     C = [[0 for _ in 1:n_i[i] ] for i in 1:n]

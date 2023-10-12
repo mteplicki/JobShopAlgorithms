@@ -17,10 +17,11 @@ Branch and Bound algorithm for the Job Shop Scheduling problem `J || Cmax` with 
 """
 function generate_active_schedules_dpc(
     instance::JobShopInstance;
-
+    yielding::Bool = false
 )
     _ , timeSeconds, bytes = @timed begin 
     n, m, n_i, p, μ = instance.n, instance.m, instance.n_i, instance.p, instance.μ
+    yield_ref = yielding ? Ref(time()) : nothing
     microruns = 0
     # algorytm Branch and Bound
     # pomocnicze tablice
@@ -45,6 +46,7 @@ function generate_active_schedules_dpc(
     terminalNodes = 0
     while !isempty(S)
         node = pop!(S)
+        try_yield(yield_ref)
         # jeżli wszystkie operacje zostały zaplanowane, to sprawdzamy, czy wartość tego węzła jest mniejsza niż obecna górna granica algorytmu
         if isempty(node.Ω)
             terminalNodes += 1
@@ -78,6 +80,7 @@ function generate_active_schedules_dpc(
             if selectedOperation[2] < n_i[selectedOperation[1]]
                 push!(newNode.Ω, (selectedOperation[1], selectedOperation[2] + 1))
             end
+            isnothing(yield_ref) || try_yield(yield_ref)
             
             # dodajemy krawędzie do grafu z selectedOperation do innych operacji z tej maszyny
             for operation in machineJobs[μ[selectedOperation[1]][selectedOperation[2]]]
@@ -93,7 +96,7 @@ function generate_active_schedules_dpc(
             
             # poprawiamy dolną granicę, za pomocą algorytmu DPC
             for machineNumber in 1:m
-                Cmaxcandidate, _ , new_microruns = generate_sequence_dpc(p, newNode.r, n_i, machineJobs, jobToGraphNode, newNode.graph, newNode.lowerBound, machineNumber)
+                Cmaxcandidate, _ , new_microruns = generate_sequence_dpc(p, newNode.r, n_i, machineJobs, jobToGraphNode, newNode.graph, newNode.lowerBound, machineNumber, yield_ref)
                 println("Cmaxcandidate: $Cmaxcandidate, lowerBoundCandidate: $lowerBoundCandidate, machineNumber: $machineNumber")
                 microruns += new_microruns
                 lowerBoundCandidate = max(Cmaxcandidate, lowerBoundCandidate)

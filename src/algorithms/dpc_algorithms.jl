@@ -178,7 +178,7 @@ function check_sequence(schedule::Vector, p, r, n_i, graph, jobToGraphNode)
     return objective2(newP, newR, newQ, delay)
 end
 
-function dpc_sequence(p::Vector{Int}, r::Vector{Int}, q::Vector{Int}, delay::Matrix{Int})
+function dpc_sequence(p::Vector{Int}, r::Vector{Int}, q::Vector{Int}, delay::Matrix{Int}, yield_ref)
     bestResult::Union{SchrageResult,Nothing} = nothing
     bestNode::Union{DPCNode,Nothing} = nothing
     N = PriorityQueue{DPCNode, Int}()
@@ -247,6 +247,7 @@ function dpc_sequence(p::Vector{Int}, r::Vector{Int}, q::Vector{Int}, delay::Mat
         J_c = 0
         f_γ = 0
         while J_c == 0 && !isempty(N) && F > f_γ
+            try_yield(yield_ref)
             node = dequeue!(N)
 
             microruns += 1

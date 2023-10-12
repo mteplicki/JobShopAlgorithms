@@ -16,12 +16,14 @@ is not guaranteed to be optimal. Also, not every instance of the problem can be 
 """
 function shiftingbottleneck(
     instance::JobShopInstance;
-    suppress_warnings::Bool = false
+    suppress_warnings::Bool = false,
+    yielding::Bool = false
 )
     _ , timeSeconds, bytes = @timed begin 
     n, m, n_i, p, μ = instance.n, instance.m, instance.n_i, instance.p, instance.μ
     (job_recirculation()(instance) && !suppress_warnings) && @warn("The shiftingbottleneck algorithm can only be used for job shop problems with no recirculation.")
     microruns = 0
+    yield_ref = yielding ? Ref(time()) : nothing
     # generujemy pomocnicze tablice
     jobToGraphNode, graphNodeToJob, machineJobs, machineWithJobs = generate_util_arrays(n, m, n_i, μ)
     # zbiór krawędzi disjunktywnych, które zostały już ustalone dla maszyny `i`
@@ -54,7 +56,7 @@ function shiftingbottleneck(
         # wybierz tę, dla której algorytm 1 | r_j | Lmax wskaże najdłuższy czas wykonania (Bottleneck)
         for i in setdiff(M, M_0)
             try 
-                LmaxCandidate, sequenceCandidate, add_microruns = generate_sequence(p, r, n_i, machineJobs, jobToGraphNode, graph, Cmax, i)          
+                LmaxCandidate, sequenceCandidate, add_microruns = generate_sequence(p, r, n_i, machineJobs, jobToGraphNode, graph, Cmax, i, yield_ref)          
                 microruns += add_microruns
                 if LmaxCandidate >= Lmax
                     Lmax = LmaxCandidate
@@ -82,7 +84,7 @@ function shiftingbottleneck(
             try
                 r, rGraph = generate_release_times(graph, n_i, graphNodeToJob)
                 longestPath = rGraph[sum(n_i)+2]
-                LmaxCandidate, sequenceCandidate, add_microruns = generate_sequence(p, r, n_i, machineJobs, jobToGraphNode, graph, Cmax, fixMachine)
+                LmaxCandidate, sequenceCandidate, add_microruns = generate_sequence(p, r, n_i, machineJobs, jobToGraphNode, graph, Cmax, fixMachine, yield_ref)
                 microruns += add_microruns
                 if LmaxCandidate + longestPath >= Cmax
                     graph = backUpGraph
