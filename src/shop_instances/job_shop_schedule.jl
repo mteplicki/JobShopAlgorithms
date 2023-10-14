@@ -4,8 +4,8 @@ abstract type ShopResult end
 
 struct ShopError <: ShopResult
     instance::JobShopInstance
-    algorithm::String
     error::String
+    algorithm::String
     date::DateTime
     metadata::Dict{String, Any}
     function ShopError(
