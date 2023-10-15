@@ -96,7 +96,8 @@ function generate_active_schedules_dpc(
             
             # poprawiamy dolną granicę, za pomocą algorytmu DPC
             for machineNumber in 1:m
-                Cmaxcandidate, _ , new_microruns = generate_sequence_dpc(p, newNode.r, n_i, machineJobs, jobToGraphNode, newNode.graph, newNode.lowerBound, machineNumber, yield_ref)                microruns += new_microruns
+                Cmaxcandidate, _ , new_microruns = generate_sequence_dpc(p, newNode.r, n_i, machineJobs, jobToGraphNode, newNode.graph, newNode.lowerBound, machineNumber, yield_ref)
+                microruns += new_microruns               
                 lowerBoundCandidate = max(Cmaxcandidate, lowerBoundCandidate)
             end
             newNode.lowerBound = lowerBoundCandidate
