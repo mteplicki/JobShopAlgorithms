@@ -73,12 +73,12 @@ function _algorithm2_two_machines_job_shop(
                 previous[successor.j] = node
             end
         end
-        isnothing(yield_ref) || try_yield(yield_ref)
+        try_yield(yield_ref)
     end
 
     # rekonstrukcja najkrótszej ścieżki
     C = reconstructpathalgorithm2(n, n_i, neighborhood, previous)
-    isnothing(yield_ref) || try_yield(yield_ref)
+    try_yield(yield_ref)
     metadata["constructed_nodes"] = length(neighborhood)
     end
     return ShopSchedule(
@@ -131,8 +131,8 @@ function two_machines_job_shop_generate_network(
     while !isempty(stack)
         node = pop!(stack)
         # generowanie sąsiadów bloku
-        barNodes = two_machines_job_shop_generate_block_graph(node, n, m, n_i, p, μ)
-        try_yield(yield_ref)
+        barNodes = two_machines_job_shop_generate_block_graph(node, n, m, n_i, p, μ, yield_ref)
+        
         neighborhood[node] = barNodes
         push!(neighborhood_dag, node)
         # jeśli jakiś wierzchołek jeszcze nie został wyznaczony, dodaj go do stosu
@@ -151,7 +151,8 @@ function two_machines_job_shop_generate_block_graph(
     m::Int64,
     n_i::Vector{T_J},
     p::Vector{Vector{T_P}},
-    μ::Vector{Vector{T_M}}
+    μ::Vector{Vector{T_M}},
+    yield_ref::Union{Ref,Nothing}
 ) where {T_J <: Integer, T_P <: Integer, T_M <: Integer}
     r = sum(n_i)
     k = n 
@@ -174,6 +175,7 @@ function two_machines_job_shop_generate_block_graph(
     while !isempty(barNodesStack)
         # ściągamy wierzchołek ze stosu, i tworzymy n kopii, w każdej dodając jedną operację z każdego zadania do bloku
         node = pop!(barNodesStack)
+        try_yield(yield_ref)
         for i = 1:n
             j = copy(node.j)
             j[i] += 1
