@@ -43,6 +43,7 @@ function shiftingbottleneckdpc(instance::JobShopInstance; yielding::Bool = false
         # wybierz tę, dla której algorytm 1 | r_j | Lmax wskaże najdłuższy czas wykonania (Bottleneck)
         for i in setdiff(M, M_0)
             # println("M_0: $M_0, i: $i")
+            try_yield(yield_ref)
             CmaxCandidate, sequenceCandidate, add_microruns = generate_sequence_dpc(p, r, n_i, machineJobs, jobToGraphNode, graph, Cmax, i, yield_ref)
             microruns += add_microruns
             if CmaxCandidate >= Cmax

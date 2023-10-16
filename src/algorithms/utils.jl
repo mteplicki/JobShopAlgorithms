@@ -8,6 +8,7 @@ function try_yield(last_time::Union{Ref{Float64}, Nothing})
         return
     end
     if time() - last_time[] > YIELD_TIME
+        # println("Yielding at $(time() - last_time[] )")
         yield()
         last_time[] = time()
     end

@@ -44,6 +44,8 @@ end
 
 Base.:(==)(p1::Path, p2::Path) = p1.J == p2.J && p1.type == p2.type
 
+Base.hash(p::Path) = hash((p.J, p.type))
+
 
 Base.:(==)(p1::PathWithJc, p2::PathWithJc) = p1.J_c == p2.J_c && p1.p == p2.p && p1.J == p2.J && p1.type == p2.type
 
@@ -54,14 +56,15 @@ Schrage algorithm is a heuristic algorithm used in Carlier modified branch and b
 function schrage(p::Vector{Int}, r::Vector{Int}, q::Vector{Int}, delay::Matrix{Int})
     size(p,1) == size(r,1) == size(q,1) == size(delay, 1) == size(delay, 2) || throw(ArgumentError("p, r, q and delay must have the same size"))
     r_prim = copy(r)
-    rQueue = PriorityQueue{Int, Int}()
-    qQueue = PriorityQueue{Int, Int}(Base.Order.Reverse)
     n = length(p)
-    for i in 1:n
-        enqueue!(rQueue, i=>r_prim[i])
-    end
-    i, _ = first(rQueue)
-    t = r_prim[i]
+    # rQueue = PriorityQueue{Int, Int}()
+    # qQueue = PriorityQueue{Int, Int}(Base.Order.Reverse)
+    # for i in 1:n
+    #     enqueue!(rQueue, i=>r_prim[i])
+    # end
+    # i, _ = first(rQueue)
+    # t = r_prim[i]
+    t = minimum(r_prim)
     U::Vector{Int} = []
     otherJobs = Set(collect(1:n))
     artificialCriticalJobs::Vector{Vector{Int}} = [[] for _ in 1:(n+1)]
@@ -104,14 +107,54 @@ function schrage(p::Vector{Int}, r::Vector{Int}, q::Vector{Int}, delay::Matrix{I
         end
     end
     real_paths, artificial_paths = reconstruct_paths_schrange(n, criticalJobs, artificialCriticalJobs)
+    # println(length(real_paths))
+    # println(length(artificial_paths))
     return SchrageResult(U, S, real_paths, artificial_paths, S[n+1], r_prim)
 end
 
+# function reconstruct_paths_schrange2(n, criticalJobs, artificialCriticalJobs)
+#     real_paths = Set{Path}()
+#     real_paths_candidates = Vector{Vector{Int}}()
+#     artificial_paths = Set{Path}()
+#     artificial_paths_candidates = Vector{Vector{Int}}()
+#     push!(real_paths_candidates, [n+1])
+#     while !isempty(real_paths_candidates)
+#         path = pop!(real_paths_candidates)
+#         if criticalJobs[path[1]] == []
+#             push!(real_paths, Path(path[1:end-1], :real))
+#         else
+#             for job in criticalJobs[path[1]]
+#                 pushfirst!(real_paths_candidates, [job; path])
+#             end
+#         end
+#         for job in artificialCriticalJobs[path[1]]
+#             pushfirst!(artificial_paths_candidates, [job])
+#         end
+#     end
+#     while !isempty(artificial_paths_candidates)
+#         path = pop!(artificial_paths_candidates)
+#         if criticalJobs[path[1]] == []
+#             push!(artificial_paths, Path(path, :artificial))
+#         else
+#             for job in criticalJobs[path[1]]
+#                 pushfirst!(artificial_paths_candidates, [job; path])
+#             end
+#         end
+#         for job in artificialCriticalJobs[path[1]]
+#             pushfirst!(artificial_paths_candidates, [job])
+#         end
+#     end
+#     return collect(real_paths), collect(artificial_paths)
+# end
+
 function reconstruct_paths_schrange(n, criticalJobs, artificialCriticalJobs)
     real_paths = Set{Path}()
-    real_paths_candidates = Vector{Vector{Int}}()
+    real_paths_candidates = Deque{Vector{Int}}()
+    real_path_candidates_constructed = Set{Vector{Int}}()
+
     artificial_paths = Set{Path}()
-    artificial_paths_candidates = Vector{Vector{Int}}()
+    artificial_paths_candidates = Deque{Vector{Int}}()
+    artificial_path_candidates_constructed = Set{Vector{Int}}()
     push!(real_paths_candidates, [n+1])
     while !isempty(real_paths_candidates)
         path = pop!(real_paths_candidates)
@@ -119,11 +162,18 @@ function reconstruct_paths_schrange(n, criticalJobs, artificialCriticalJobs)
             push!(real_paths, Path(path[1:end-1], :real))
         else
             for job in criticalJobs[path[1]]
-                pushfirst!(real_paths_candidates, [job; path])
+                newpath = [job; path]
+                if newpath ∉ real_path_candidates_constructed 
+                    pushfirst!(real_paths_candidates, newpath)
+                    push!(real_path_candidates_constructed, newpath)
+                end
             end
         end
         for job in artificialCriticalJobs[path[1]]
-            pushfirst!(artificial_paths_candidates, [job])
+            if [job] ∉ artificial_path_candidates_constructed
+                pushfirst!(artificial_paths_candidates, [job])
+                push!(artificial_path_candidates_constructed, [job])
+            end
         end
     end
     while !isempty(artificial_paths_candidates)
@@ -132,11 +182,18 @@ function reconstruct_paths_schrange(n, criticalJobs, artificialCriticalJobs)
             push!(artificial_paths, Path(path, :artificial))
         else
             for job in criticalJobs[path[1]]
-                pushfirst!(artificial_paths_candidates, [job; path])
+                newpath = [job; path]
+                if newpath ∉ artificial_path_candidates_constructed
+                    pushfirst!(artificial_paths_candidates, newpath)
+                    push!(artificial_path_candidates_constructed, newpath)
+                end
             end
         end
         for job in artificialCriticalJobs[path[1]]
-            pushfirst!(artificial_paths_candidates, [job])
+            if [job] ∉ artificial_path_candidates_constructed 
+                pushfirst!(artificial_paths_candidates, [job])
+                push!(artificial_path_candidates_constructed, [job])
+            end
         end
     end
     return collect(real_paths), collect(artificial_paths)
@@ -188,6 +245,7 @@ function dpc_sequence(p::Vector{Int}, r::Vector{Int}, q::Vector{Int}, delay::Mat
     microruns = 0
 
     microruns += 1
+
     schrage_result::SchrageResult = schrage(p, r, q, delay)
     Cmax = objective(schrage_result.U, p, r, q, delay)
     path_with_Jc::PathWithJc = critical_path_with_jc(schrage_result, p, r, q, delay)
