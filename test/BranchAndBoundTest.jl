@@ -6,9 +6,9 @@ testsWithResults = [
     , ("instances/test3.txt", 666)
     ]
 @testset "BranchAndBoundTest" verbose = true for (filename, expectedValue) in testsWithResults 
-    println(filename)
+    # println(filename)
     @test Algorithms.generate_active_schedules(open(x->read(x, InstanceLoaders.StandardSpecification), filename)).objectiveValue == expectedValue
-    println("done")
+    # println("done")
 end
 
 end
