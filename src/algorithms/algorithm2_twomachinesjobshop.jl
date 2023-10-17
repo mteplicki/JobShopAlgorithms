@@ -12,11 +12,9 @@ struct BarNode{T_J<:Integer, T_P<:Integer}
     j::Vector{T_J}
     h::T_J
     t::Vector{T_P}
-    times::Vector{NamedTuple{(:i,:j,:C), Tuple{T_J,T_J,T_P}}}
-    operation_times::Vector{Vector{T_P}}
-    BarNode(j::Vector{T_J}, h::T_J, t::Vector{T_P}) where {T_J <: Integer, T_P <: Integer} = new{T_J, T_P}(j, h, t, [], [])
-    BarNode(j::Vector{T_J}, h::T_J, t::Vector{T_P}, times::Vector{NamedTuple{(:i,:j,:C), Tuple{T_J,T_J,T_P}}}) where {T_J <: Integer, T_P <: Integer}  = new{T_J, T_P}(j, h, t, times, [])
-    BarNode(j::Vector{T_J}, h::T_J, t::Vector{T_P}, times::Vector{NamedTuple{(:i,:j,:C), Tuple{T_J,T_J,T_P}}}, operation_times::Vector{Vector{T_P}}) where {T_J <: Integer, T_P <: Integer}  = new{T_J, T_P}(j, h, t, times, operation_times)
+    operation_times::Dict{Tuple{T_J, T_J}, T_P}
+    BarNode(j::Vector{T_J}, h::T_J, t::Vector{T_P}) where {T_J <: Integer, T_P <: Integer} = new{T_J, T_P}(j, h, t, Dict{Tuple{T_J, T_J}, T_P}())
+    BarNode(j::Vector{T_J}, h::T_J, t::Vector{T_P}, operation_times::Dict{Tuple{T_J, T_J}, T_P}) where {T_J <: Integer, T_P <: Integer}  = new{T_J, T_P}(j, h, t, operation_times)
 end
  
 """
@@ -55,22 +53,22 @@ function _algorithm2_two_machines_job_shop(
     r = sum(n_i)
     k = n
     # Dict() do wyznaczania poprzedników najkrótszych ścieżek w grafie
-    previous = Dict{Vector{T_J}, Vector{T_J}}()
+    previous = OffsetArray(Array{Vector{T_J}, n}(undef, (n_i .+ 1)...), [-1 for _ in 1:n]...)
     # Dict() do wyznaczania najkrótszej odległości w grafie od wierzchołka startowego
-    d = Dict{Vector{T_J}, T_P}()
-    sizehint = sizeofdict(n_i)
-    sizehint!(previous, sizehint) 
-    sizehint!(d, sizehint)
-    d[zeros(T_P, n)] = T_P(0)
+    d = OffsetArray(fill(typemax(T_P), Tuple(n_i .+ 1)), [-1 for _ in 1:n]...)
+    # sizehint = sizeofdict(n_i .+ 1)
+    # sizehint!(previous, sizehint) 
+    # sizehint!(d, sizehint)
+    d[CartesianIndex(zeros(T_P, n)...)] = T_P(0)
     # generowanie grafu bloków operacji
-    neighborhood, neighborhood_dag = two_machines_job_shop_generate_network(n, m, n_i, p, μ, yield_ref)
+    neighborhood, neighborhood_dag, average, max = two_machines_job_shop_generate_network(n, m, n_i, p, μ, yield_ref)
     # wyznaczenie kombinacji bloków operacji o najkrótszej długości
     for node in neighborhood_dag
-        succesors = neighborhood[node]
+        succesors = neighborhood[CartesianIndex((node...,))]
         for successor in succesors
-            if get(d,successor.j, typemax(T_P)) > d[node] + maximum(successor.t)
-                d[successor.j] = d[node] + maximum(successor.t)
-                previous[successor.j] = node
+            if d[CartesianIndex(successor.j...)] > d[CartesianIndex(node...)] + maximum(successor.t)
+                d[CartesianIndex(successor.j...)] = d[CartesianIndex(node...)] + maximum(successor.t)
+                previous[CartesianIndex(successor.j...)] = node
             end
         end
         try_yield(yield_ref)
@@ -80,6 +78,8 @@ function _algorithm2_two_machines_job_shop(
     C = reconstructpathalgorithm2(n, n_i, neighborhood, previous)
     try_yield(yield_ref)
     metadata["constructed_nodes"] = length(neighborhood)
+    metadata["average"] = average
+    metadata["max"] = max
     end
     return ShopSchedule(
         instance, 
@@ -112,9 +112,9 @@ function two_machines_job_shop_generate_network(
 ) where {T_J <: Integer, T_P <: Integer, T_M <: Integer}
     # Dict() wyznaczający sąsiadów w grafie bloków operacji 
     neighborhood_dag = Vector{T_J}[]
-    neighborhood = Dict{Vector{T_J}, Vector{BarNode{T_J, T_P}}}()
-    sizehint = sizeofdict(n_i)
-    sizehint!(neighborhood, sizehint) 
+    neighborhood = OffsetArray(Array{Vector{BarNode{T_J, T_P}}, n}(undef, (n_i .+ 1)...), [-1 for _ in 1:n]...)
+    sizehint = sizeofdict(n_i .+ 1)
+    # sizehint!(neighborhood, sizehint) 
     sizehint!(neighborhood_dag, sizehint)
 
     # Stos wierzchołków, do wyznacznia sąsiadów
@@ -124,25 +124,34 @@ function two_machines_job_shop_generate_network(
     push!(neighborhood_dag, startNode)
 
     # Zbiór wierzchołków, które już pojawiłu się w `stack`
-    stackSet = Set{Vector{T_J}}()
-    sizehint!(stackSet, sizehint)
-    push!(stackSet, startNode)
+    stackVisited = falses((n_i .+ 1)...)
+    stackVisited[CartesianIndex(startNode .+ 1...)] = true
+    average = 0
+    i = 0
+    maxi = 0
 
     while !isempty(stack)
         node = pop!(stack)
         # generowanie sąsiadów bloku
         barNodes = two_machines_job_shop_generate_block_graph(node, n, m, n_i, p, μ, yield_ref)
-        
-        neighborhood[node] = barNodes
+
+        percent =  (length(barNodes) / sizeofdict((n_i .+ 1) .- node))
+        average = (i*average + percent) / (i+1)
+        i += 1
+        maxi = max(maxi, percent)
+
+        neighborhood[CartesianIndex(node...)] = barNodes
         push!(neighborhood_dag, node)
         # jeśli jakiś wierzchołek jeszcze nie został wyznaczony, dodaj go do stosu
-        for barNode in filter(x -> x.j ∉ stackSet, barNodes)
-            push!(stack, barNode.j)
-            push!(stackSet, barNode.j)
+        for barNode in barNodes
+            if !stackVisited[CartesianIndex(barNode.j .+ 1...)]
+                push!(stack, barNode.j)
+                stackVisited[CartesianIndex(barNode.j .+ 1...)] = true
+            end
         end
     end
     sort!(neighborhood_dag, lt=(x,y)->(all(x .≤ y) && x ≠ y))
-    return neighborhood, neighborhood_dag
+    return neighborhood, neighborhood_dag, average, maxi
 end
 
 function two_machines_job_shop_generate_block_graph(
@@ -162,12 +171,13 @@ function two_machines_job_shop_generate_block_graph(
 
     # Zbiór już wyznaczonych sąsiadów bloku startowego
     barNodesSet = Set{Vector{T_J}}()
-    sizehint = sizeofdict(n_i)
+    sizehint = floor(Int, sizeofdict((n_i .+ 1) .- u) * 0.12)
     sizehint!(barNodesSet, sizehint)
+    
     
     # Stos wierzchołków, do wyznacznia sąsiadów
     barNodesStack = Stack{BarNode{T_J, T_P}}()
-    s = BarNode(u, T_J(0), T_P[0, 0], NamedTuple{(:i,:j,:C), Tuple{T_J,T_J,T_P}}[], [[T_P(0) for _ in 1:n_i[i]] for i in 1:n])
+    s = BarNode(u, T_J(0), T_P[0, 0])
     # push!(barNodes, s)
     push!(barNodesStack, s)
     # push!(barNodesSet, s.j)
@@ -187,23 +197,23 @@ function two_machines_job_shop_generate_block_graph(
             end
             μ_ij = μ[i][j[i]]
             t = copy(node.t)    
-            operation_times = deepcopy(node.operation_times)
+            operation_times = copy(node.operation_times)
             # ustalamy czas zakończenia operacji na maszynie μ_ij, czyli na tej, która jest przypisana do operacji
-            if (j - s.j)[i] > 1 && t[μ_ij] < operation_times[i][j[i]-1]
+            if (j - s.j)[i] > 1 && t[μ_ij] < get(operation_times,(i,j[i]-1),T_P(0))
                 continue
             end
 
             t[μ_ij] = t[μ_ij] + p[i][j[i]]
             
-            operation_times[i][j[i]] = t[μ_ij]
-            times = copy(node.times)
+            operation_times[(i,j[i])] = t[μ_ij]
+            # times = copy(node.times)
             # dodajemy czas zakończenia operacji do wektora times
-            push!(times, (i=i, j=j[i], C=t[μ_ij]))
+            # push!(times, (i=i, j=j[i], C=t[μ_ij]))
             newnode::Union{BarNode,Nothing} = nothing
 
             # jeśli node jest wektorem startowym, to dodajemy nowy wierzchołek do grafu
             if node.j == s.j
-                newnode = BarNode(j, T_J(i), t, times, operation_times)
+                newnode = BarNode(j, T_J(i), t, operation_times)
             else
                 # dodawanie zgodnie z reguła zapisaną w Brucker
                 if node.t[1] >= node.t[2] && μ_ij == 1
@@ -211,64 +221,25 @@ function two_machines_job_shop_generate_block_graph(
                 elseif node.t[2] >= node.t[1] && μ_ij == 2
                     newnode = nothing
                 else
-                    newnode = BarNode(j, T_J(i), t, times, operation_times)
+                    newnode = BarNode(j, T_J(i), t, operation_times)
                 end
             end
             if newnode !== nothing && newnode.j ∉ barNodesSet
-                # if s.j == [0,0,0,0,0] && ( j == [2,0,3,0,1] || j == [1,0,2,0,1])
-                #     println("debug1: $j")
-                # end
-                # if s.j == [1,0,2,0,1] && j == [2,0,3,0,1]
-                #     println("debug2: $j")
-                # end
-                # if s.j == [2,0,3,0,1] && j == [3,0,3,0,1]
-                #     println("debug3: $j")
-                # end
-                # if s.j == [3,0,3,0,1] && j == [3,0,4,0,1]
-                #     println("debug4: $j")
-                # end
-                # if s.j == [3,0,4,0,1] && j == [3,0,5,0,1]
-                #     println("debug5: $j")
-                # end
-                # if s.j == [3,0,5,0,1] && j == [4,0,6,0,1]
-                #     println("debug6: $j")
-                # end
-                # if s.j == [4,0,6,0,1] && j == [4,0,6,1,1]
-                #     println("debug7: $j")
-                # end
-                # if s.j == [4,0,6,1,1] && j == [4,0,6,2,2]
-                #     println("debug8: $j")
-                # end
-                # if s.j == [4,0,6,2,2] && j == [5,2,6,2,3]
-                #     println("debug9: $j")
-                # end
-                # if s.j == [5,2,6,2,3] && j == [6,4,6,6,6]
-                #     println("debug10: $j")
-                # end
-                # if s.j == [6,4,6,6,6] && j == [6,5,6,6,6]
-                #     println("debug11: $j")
-                # end
-                # if s.j == [6,5,6,6,6] && j == [6,6,6,6,6]
-                #     println("debug12: $j")
-                # end
                 push!(barNodes, newnode)
                 push!(barNodesStack, newnode)
                 push!(barNodesSet, newnode.j)
             end
         end
     end
-    # if s.j == [6,5,6,6,6]
-    #     println("neighborhood of $(s.j): $(map(x->x.j,barNodes))")
-    # end
     return barNodes
 end
 
 function reconstructpathalgorithm2(
     n::Int,
     n_i::Vector{T_J},
-    neighborhood::Dict{Vector{T_J}, Vector{BarNode{T_J, T_P}}},
-    previous::Dict{Vector{T_J}, Vector{T_J}}
-) where {T_J <: Integer, T_P <: Integer}
+    neighborhood,
+    previous
+) where {T_J <: Integer}
     r = sum(n_i)
     k = length(n_i)
     C = [[0 for _ in 1:n_i[i]] for i in 1:n]
@@ -276,20 +247,17 @@ function reconstructpathalgorithm2(
     current = [n_i[i] for i in 1:n]
     while current !== nothing
         pushfirst!(path, current)
-        current = get(previous, current, nothing)
+        current = isassigned(previous,CartesianIndex(current...)) ? previous[CartesianIndex(current...)] : nothing
     end
     max_time = 0
     for (point1, point2) in zip(path, Iterators.drop(path, 1))
-        current_neighbors = neighborhood[point1]
+        current_neighbors = neighborhood[CartesianIndex(point1...)]
         times_index = findfirst(x -> x.j == point2, current_neighbors)
-        times = current_neighbors[times_index].times
-        for time in times
-            i,j,C_ij = time.i, time.j, time.C
+        times = current_neighbors[times_index].operation_times
+        for ((i,j), C_ij) in times
             C[i][j] = max_time + C_ij
         end
         max_time = maximum(maximum.(C))
     end
     return C
-
-    
 end
