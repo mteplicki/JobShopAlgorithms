@@ -33,7 +33,7 @@ end
 """ 
 generates a release times for a given disjunctive graph
 """
-function generate_release_times(graph::SimpleWeightedGraphAdj{Int, Int}, n_i::Vector{Int}, graphNodeToJob::Vector{Tuple{Int,Int}})
+function generate_release_times(graph::SimpleDirectedWeightedGraphAdj{Int, Int}, n_i::Vector{Int}, graphNodeToJob::Vector{Tuple{Int,Int}})
     rGraph = dag_paths(graph, 1, :longest)
     r = [[0 for _ in 1:a] for a in n_i]
     for (index, value) in enumerate(rGraph)
@@ -49,37 +49,62 @@ end
 """
     Generate a sequence of jobs on a given machine, with a 1|r_j|Lmax criterion
 """
-function generate_sequence(p::Vector{Vector{Int}}, r::Vector{Vector{Int}}, n_i::Vector{Int}, machineJobs::Vector{Vector{Tuple{Int,Int}}}, jobToGraphNode::Vector{Vector{Int}}, graph::SimpleWeightedGraphAdj{Int, Int}, Cmax::Int64, i::Int, yield_ref)
+function generate_sequence(p::Vector{Vector{Int}}, r::Vector{Vector{Int}}, n_i::Vector{Int}, machineJobs::Vector{Vector{Tuple{Int,Int}}}, jobToGraphNode::Vector{Vector{Int}}, graph::SimpleDirectedWeightedGraphAdj{Int, Int}, Cmax::Int64, i::Int, yield_ref)
+    d = dag_paths(graph, sum(n_i) + 2, :longest; reversed = true)
     newP = [p[job[1]][job[2]] for job in machineJobs[i]]
-    newD::Vector{Int} = []
     newR = [r[job[1]][job[2]] for job in machineJobs[i]]
-    for job in machineJobs[i]
-        d = dag_paths(graph, jobToGraphNode[job[1]][job[2]], :longest)
-        
-        push!(newD, Cmax + p[job[1]][job[2]] - d[sum(n_i) + 2])
-    end
-    Lmax, sequence, microruns = single_machine_release_LMax(newP,newR,newD, yield_ref)
+    newD = [Cmax + p[job[1]][job[2]] - d[jobToGraphNode[job[1]][job[2]]] for job in machineJobs[i]]
+    # newD::Vector{Int} = []
+    # for (a, job) in enumerate(machineJobs[i])
+    #     d = dag_paths(graph, jobToGraphNode[job[1]][job[2]], :longest)
+    #     push!(newD, Cmax + p[job[1]][job[2]] - d[sum(n_i) + 2])
+    # end
+    # @assert newD == newD2
+
+    # Lmax2, sequence2, _ = single_machine_release_LMax(newP,newR,newD, yield_ref)
+    Lmax, sequence, microruns = single_machine_release_LMax2(newP,newR,newD, yield_ref)
+    # if Lmax != Lmax2
+    #     @show newP
+    #     @show newR
+    #     @show newD
+    #     @show Lmax
+    #     @show Lmax2
+    #     @show sequence
+    #     @show sequence2
+    #     D1 = []
+    #     D2 = []
+    #     t1 = 0
+    #     t2 = 0
+    #     for s in sequence
+    #         t1 = max(t1, newR[s]) + newP[s]
+    #         push!(D1, t1 - newD[s])
+    #     end
+    #     for s in sequence2
+    #         t2 = max(t2, newR[s]) + newP[s]
+    #         push!(D2, t2 - newD[s])
+    #     end
+    #     @show D1
+    #     @show D2
+
+
+    # end
     try_yield(yield_ref)
     return Lmax, map(x -> machineJobs[i][x], sequence), microruns
 end
 
-function generate_sequence_pmtn(p::Vector{Vector{Int}}, r::Vector{Vector{Int}}, n_i::Vector{Int}, machineJobs::Vector{Vector{Tuple{Int,Int}}}, jobToGraphNode::Vector{Vector{Int}}, graph::SimpleWeightedGraphAdj{Int, Int}, Cmax::Int64, i::Int, yield_ref)
+function generate_sequence_pmtn(p::Vector{Vector{Int}}, r::Vector{Vector{Int}}, n_i::Vector{Int}, machineJobs::Vector{Vector{Tuple{Int,Int}}}, jobToGraphNode::Vector{Vector{Int}}, graph::SimpleDirectedWeightedGraphAdj{Int, Int}, Cmax::Int64, i::Int, yield_ref)
+    d = dag_paths(graph, sum(n_i) + 2, :longest; reversed = true)
     newP = [p[job[1]][job[2]] for job in machineJobs[i]]
-    newD::Vector{Int} = []
     newR = [r[job[1]][job[2]] for job in machineJobs[i]]
-    for job in machineJobs[i]
-        d = dag_paths(graph, jobToGraphNode[job[1]][job[2]], :longest)
-        
-        push!(newD, Cmax + p[job[1]][job[2]] - d[sum(n_i) + 2])
-    end
+    newD = [Cmax + p[job[1]][job[2]] - d[jobToGraphNode[job[1]][job[2]]] for job in machineJobs[i]]
     jobs = [JobData(newP[j], newR[j], newD[j], j, nothing) for j in 1:length(newP)]
-    Lmax = single_machine_release_LMax_pmtn(jobs, JobData[])
+    Lmax, _  = single_machine_release_LMax_pmtn(jobs, JobData[])
     try_yield(yield_ref)
     return Lmax, 1
 end
 
 
-function generate_sequence_dpc(p::Vector{Vector{Int}}, r::Vector{Vector{Int}}, n_i::Vector{Int}, machineJobs::Vector{Vector{Tuple{Int,Int}}}, jobToGraphNode::Vector{Vector{Int}}, graph::SimpleWeightedGraphAdj{Int, Int}, Cmax::Int64, i::Int, yield_ref)
+function generate_sequence_dpc(p::Vector{Vector{Int}}, r::Vector{Vector{Int}}, n_i::Vector{Int}, machineJobs::Vector{Vector{Tuple{Int,Int}}}, jobToGraphNode::Vector{Vector{Int}}, graph::SimpleDirectedWeightedGraphAdj{Int, Int}, Cmax::Int64, i::Int, yield_ref)
     newP = [p[job[1]][job[2]] for job in machineJobs[i]]
     newQ::Vector{Int} = []
     newR = [r[job[1]][job[2]] for job in machineJobs[i]]
@@ -95,7 +120,7 @@ function generate_sequence_dpc(p::Vector{Vector{Int}}, r::Vector{Vector{Int}}, n
     return Cmax, map(x -> machineJobs[i][x], sequence), microruns
 end
 
-function generate_data(p::Vector{Vector{Int}}, r::Vector{Vector{Int}}, n_i::Vector{Int}, machineJobs::Vector{Vector{Tuple{Int,Int}}}, jobToGraphNode::Vector{Vector{Int}}, graph::SimpleWeightedGraphAdj{Int, Int}, Cmax::Int64, i::Int)
+function generate_data(p::Vector{Vector{Int}}, r::Vector{Vector{Int}}, n_i::Vector{Int}, machineJobs::Vector{Vector{Tuple{Int,Int}}}, jobToGraphNode::Vector{Vector{Int}}, graph::SimpleDirectedWeightedGraphAdj{Int, Int}, Cmax::Int64, i::Int)
     newP = [p[job[1]][job[2]] for job in machineJobs[i]]
     newQ::Vector{Int} = []
     newD::Vector{Int} = []
@@ -115,7 +140,7 @@ end
 """
     Fix a disjunctive edges with a given sequence of jobs on a given machine
 """
-function fix_disjunctive_edges(sequence::Vector{Tuple{Int,Int}}, jobToGraphNode::Vector{Vector{Int}}, graph::SimpleWeightedGraphAdj{Int, Int}, p::Vector{Vector{Int}}, machine::Int64, machineFixedEdges::Vector{Vector{Tuple{Int,Int}}})
+function fix_disjunctive_edges(sequence::Vector{Tuple{Int,Int}}, jobToGraphNode::Vector{Vector{Int}}, graph::SimpleDirectedWeightedGraphAdj{Int, Int}, p::Vector{Vector{Int}}, machine::Int64, machineFixedEdges::Vector{Vector{Tuple{Int,Int}}})
     for (job1, job2) in Iterators.zip(sequence, Iterators.drop(sequence, 1))
         i1, j1 = job1[1], job1[2]
         i2, j2 = job2[1], job2[2]
@@ -155,7 +180,7 @@ end
 Returns a graph with only conjuctive edges
 """
 function generate_conjuctive_graph(n::Int, n_i::Vector{Int}, p::Vector{Vector{Int}}, jobToGraphNode::Vector{Vector{Int}})
-    graph = SimpleWeightedGraphAdj(sum(n_i)+2, Int)
+    graph = SimpleDirectedWeightedGraphAdj(sum(n_i)+2, Int)
     for i in 1:n
         add_edge!(graph, 1, jobToGraphNode[i][1], 0)
         for j in 1:(n_i[i] - 1)

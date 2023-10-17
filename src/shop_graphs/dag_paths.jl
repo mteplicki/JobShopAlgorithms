@@ -10,6 +10,7 @@ Returns all paths from the source vertex to all other vertices in a directed acy
 - `graph::SimpleWeightedGraphAdj{V,U}`: A directed acyclic graph.
 - `source::V`: The source vertex.
 - `type::Symbol`: The type of path to return. Possible values are `:shortest` and `:longest`.
+- `reversed::Bool`: Whether to use the reversed graph.
 
 # Returns
 - `dist::Vector{V}`: A vector of distances from the source vertex to all other vertices.
@@ -17,7 +18,7 @@ Returns all paths from the source vertex to all other vertices in a directed acy
 # Throws
 - `ArgumentError`: If the type is not `:shortest` or `:longest`, or if the graph is not a DAG.
 """
-function dag_paths(graph::SimpleWeightedGraphAdj{V,U}, source::V, type::Symbol) where {V<:Integer, U<:Real} 
+function dag_paths(graph::SimpleDirectedWeightedGraphAdj{V,U}, source::V, type::Symbol; reversed=false) where {V<:Integer, U<:Real} 
     
     if type == :longest
         dist = fill(typemin(V), length(graph.vertices))
@@ -29,9 +30,18 @@ function dag_paths(graph::SimpleWeightedGraphAdj{V,U}, source::V, type::Symbol) 
     visited = falses(length(graph.vertices))
     pathVis = falses(length(graph.vertices))
     stack = Stack{V}()
-    for i in 1:length(graph.vertices)
-        if !visited[i]
-            topological_sort_util(graph, visited, pathVis, stack, i)
+    edges = reversed ? graph.edges_transpose : graph.edges
+    if reversed
+        for i in length(graph.vertices):-1:1
+            if !visited[i]
+                topological_sort_util(graph, visited, pathVis, stack, i, reversed)
+            end
+        end
+    else
+        for i in 1:length(graph.vertices)
+            if !visited[i]
+                topological_sort_util(graph, visited, pathVis, stack, i, reversed)
+            end
         end
     end
 
@@ -39,7 +49,7 @@ function dag_paths(graph::SimpleWeightedGraphAdj{V,U}, source::V, type::Symbol) 
 
     while !isempty(stack)
         v = pop!(stack)
-        for edge in graph.edges[v]
+        for edge in edges[v]
             if type == :longest
                 dist[edge.dst] = max(dist[edge.dst], dist[v] + edge.weight)
             elseif type == :shortest
@@ -47,8 +57,6 @@ function dag_paths(graph::SimpleWeightedGraphAdj{V,U}, source::V, type::Symbol) 
             end
         end
     end
-
-    
 
     return dist
 end
@@ -64,20 +72,21 @@ A utility function used in topological sorting of a directed acyclic graph (DAG)
 - `pathVis::BitVector`: A bit vector to keep track of the vertices in the current path.
 - `stack::Stack{V}`: A stack to store the vertices in topological order.
 - `v::V`: The vertex to be visited.
+- `reversed::Bool`: Whether to use the reversed graph.
 
 # Returns
 - `nothing`
 
 # Throws
 - `ArgumentError`: If the graph is not a DAG.
-
 """
-function topological_sort_util(graph::SimpleWeightedGraphAdj{V,U}, visited::BitVector, pathVis::BitVector, stack::Stack{V}, v::V) where {V<:Integer, U<:Real}
+function topological_sort_util(graph::SimpleDirectedWeightedGraphAdj{V,U}, visited::BitVector, pathVis::BitVector, stack::Stack{V}, v::V, reversed::Bool) where {V<:Integer, U<:Real}
     visited[v] = true
     pathVis[v] = true
-    for edge in graph.edges[v]
+    edges = reversed ? graph.edges_transpose : graph.edges
+    for edge in edges[v]
         if !visited[edge.dst]
-            topological_sort_util(graph, visited, pathVis, stack, edge.dst)
+            topological_sort_util(graph, visited, pathVis, stack, edge.dst, reversed)
         elseif pathVis[edge.dst]
             throw(ArgumentError("Graph is not a DAG"))
         end
