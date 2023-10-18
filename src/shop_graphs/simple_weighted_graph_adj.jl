@@ -23,6 +23,10 @@ mutable struct SimpleDirectedWeightedEdge{T<:Integer, U<:Real} <: AbstractEdge{T
     weight::U
 end
 
+function Base.show(io::IO, edge::SimpleDirectedWeightedEdge{T,U}) where {T<:Integer, U<:Real}
+    print(io, "SimpleDirectedWeightedEdge(", edge.src, ", ", edge.dst, ", ", edge.weight, ")")
+end
+
 """
     SimpleWeightedGraphAdj{T<:Integer, U<:Real}
 
@@ -65,6 +69,19 @@ mutable struct SimpleDirectedWeightedGraphAdj{T<:Integer, U<:Real} <: AbstractGr
     end
 end
 
+function Base.show(io::IO, graph::SimpleDirectedWeightedGraphAdj{T,U}) where {T<:Integer, U<:Real}
+    println(io, "SimpleDirectedWeightedGraphAdj{", T, ", ", U, "}(")
+    print(io, "    vertices = ", graph.vertices, "\n")
+    print(io, "    edges = [\n")
+    for vertex in graph.vertices
+        print(io, "        ")
+        show(io, graph.edges[vertex])
+        print(io, "\n")
+    end
+    print(io, "    ]\n")
+    print(io, ")")
+end
+
 function SimpleDirectedWeightedGraphAdj(n::T, ::Type{U}) where {T<:Integer, U<:Real}
     vertices = [i for i in 1:n]
     edges::Vector{Vector{SimpleDirectedWeightedEdge{T,U}}} = [[] for _ in 1:n]
@@ -95,6 +112,9 @@ end
 Graphs.has_vertex(graph::SimpleDirectedWeightedGraphAdj, v::T) where {T<:Integer} = v ∈ graph.vertices
 
 Graphs.add_vertex!(graph::SimpleDirectedWeightedGraphAdj, v::T) where {T<:Integer} = push!(graph.vertices, v)
+
+Graphs.outneighbors(graph::SimpleDirectedWeightedGraphAdj, v::T) where {T<:Integer} = [edge.dst for edge in graph.edges[v]]
+Graphs.inneighbors(graph::SimpleDirectedWeightedGraphAdj, v::T) where {T<:Integer} = [edge.dst for edge in graph.edges_transpose[v]]
 
 function Base.getindex(graph::SimpleDirectedWeightedGraphAdj, i::Integer, j::Integer, ::Val{:weight})
     for edge in graph.edges[i]

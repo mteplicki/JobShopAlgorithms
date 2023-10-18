@@ -106,14 +106,22 @@ function generate_active_schedules(
             # poprawiamy dolną granicę, za pomocą algorytmu 1|R_j|Lmax dla każdej maszyny
             # lub gdy machine_repetition == true, to za pomocą algorytmu 1|r_j, pmtn|Lmax
             for machineNumber in 1:m
-                if bounding_algorithm == :pmtn
-                    LmaxCandidate, _ = generate_sequence_pmtn(p, newNode.r, n_i, machineJobs, jobToGraphNode, newNode.graph, newNode.lowerBound, machineNumber, yield_ref)
-                    microruns += 1
-                else
-                    LmaxCandidate, _, new_microruns = generate_sequence(p, newNode.r, n_i, machineJobs, jobToGraphNode, newNode.graph, newNode.lowerBound, machineNumber, yield_ref)
-                    microruns += new_microruns
+                try
+                    if bounding_algorithm == :pmtn
+                        LmaxCandidate, _ = generate_sequence_pmtn(p, newNode.r, n_i, machineJobs, jobToGraphNode, newNode.graph, newNode.lowerBound, machineNumber, yield_ref)
+                        microruns += 1
+                    else
+                        LmaxCandidate, _, new_microruns = generate_sequence(p, newNode.r, n_i, machineJobs, jobToGraphNode, newNode.graph, newNode.lowerBound, machineNumber, yield_ref)
+                        microruns += new_microruns
+                    end
+                    lowerBoundCandidate = max(newNode.lowerBound + LmaxCandidate, lowerBoundCandidate)
+                catch error
+                    if error isa DimensionMismatch
+                        continue
+                    else
+                        rethrow()
+                    end
                 end
-                lowerBoundCandidate = max(newNode.lowerBound + LmaxCandidate, lowerBoundCandidate)
             end
             newNode.lowerBound = lowerBoundCandidate
             push!(listOfNodes, newNode)

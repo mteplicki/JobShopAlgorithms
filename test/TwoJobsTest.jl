@@ -2,7 +2,8 @@ function TwoJobsTest()
 
 testsWithResults = [
     ("twojobsinstances/test1.txt", 31),
-    ("twojobsinstances/test2.txt", 36)
+    ("twojobsinstances/test2.txt", 36),
+    ("trickytest/m14n_i6.txt", 49)
     ]
 
 @testset "TwoJobsTest" verbose = true begin

@@ -25,22 +25,16 @@ function shiftingbottleneck(
     (job_recirculation()(instance) && !suppress_warnings) && @warn("The shiftingbottleneck algorithm can only be used for job shop problems with no recirculation.")
     microruns = 0
     yield_ref = yielding ? Ref(time()) : nothing
+
     # generujemy pomocnicze tablice
     jobToGraphNode, graphNodeToJob, machineJobs, machineWithJobs = generate_util_arrays(n, m, n_i, μ)
+    # @show machineJobs
     # zbiór krawędzi disjunktywnych, które zostały już ustalone dla maszyny `i`
     machineFixedEdges::Vector{Vector{Tuple{Int,Int}}} = [[] for _ in 1:m]
 
     graph = generate_conjuctive_graph(n, n_i, p, jobToGraphNode)
 
-    r, rGraph = try
-        generate_release_times(graph, n_i, graphNodeToJob)       
-    catch error
-        if isa(error, ArgumentError)
-            return ShopError(instance, "Cycle of fixed disjunctive edges occured."; algorithm = "Shifting Bottleneck")
-        else 
-            rethrow()   
-        end
-    end
+    r, rGraph = generate_release_times(graph, n_i, graphNodeToJob)       
     Cmax = rGraph[sum(n_i)+2]
     # M_0 - zbiór maszyn, dla których ustalono już krawędzie disjunktywne
     M_0 = Set{Int}()
@@ -57,7 +51,7 @@ function shiftingbottleneck(
         # wybierz tę, dla której algorytm 1 | r_j | Lmax wskaże najdłuższy czas wykonania (Bottleneck)
         for i in setdiff(M, M_0)
             try 
-                LmaxCandidate, sequenceCandidate, add_microruns = generate_sequence(p, r, n_i, machineJobs, jobToGraphNode, graph, Cmax, i, yield_ref)          
+                LmaxCandidate, sequenceCandidate, add_microruns = generate_sequence(p, r, n_i, machineJobs, jobToGraphNode, graph, Cmax, i, yield_ref)     
                 microruns += add_microruns
                 if LmaxCandidate >= Lmax
                     Lmax = LmaxCandidate
@@ -67,10 +61,16 @@ function shiftingbottleneck(
             catch error
                 if isa(error, ArgumentError)
                     return ShopError(instance, "Cycle of fixed disjunctive edges occured."; algorithm = "Shifting Bottleneck")
-                else 
-                    rethrow()   
+                elseif isa(error, DimensionMismatch) 
+                    continue
+                else
+                    rethrow()
                 end
             end
+        end
+        if k === nothing
+            M_0 = M
+            continue
         end
         M_0 = M_0 ∪ k
         Cmax += Lmax
@@ -97,8 +97,11 @@ function shiftingbottleneck(
             catch error
                 if isa(error, ArgumentError)
                     return ShopError(instance, "Cycle of fixed disjunctive edges occured."; algorithm = "Shifting Bottleneck")
-                else 
-                    rethrow()   
+                elseif isa(error, DimensionMismatch) 
+                    graph = backUpGraph
+                    continue
+                else
+                    rethrow()
                 end
             end
             

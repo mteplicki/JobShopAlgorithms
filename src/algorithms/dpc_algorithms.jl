@@ -247,7 +247,7 @@ function dpc_sequence(p::Vector{Int}, r::Vector{Int}, q::Vector{Int}, delay::Mat
     microruns += 1
 
     schrage_result::SchrageResult = schrage(p, r, q, delay)
-    Cmax = objective(schrage_result.U, p, r, q, delay)
+    Cmax = schrage_result.Cmax
     path_with_Jc::PathWithJc = critical_path_with_jc(schrage_result, p, r, q, delay)
     J_c = path_with_Jc.J_c
     P = path_with_Jc.p

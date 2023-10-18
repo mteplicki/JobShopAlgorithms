@@ -9,6 +9,7 @@ include("SingleMachineReleaseTests.jl")
 include("TrickyTest.jl")
 include("DPCTest.jl")
 include("TwoMachinesTest.jl")
+include("ShiftingBottleneckDPCTest.jl")
 
 @testset "ShopAlgorithmsTests" verbose = true begin
 
@@ -32,6 +33,8 @@ include("TwoMachinesTest.jl")
     TwoMachinesTest()
 
     DPCTest()
+
+    ShiftingBottleneckDPCTest()
 
 end
 

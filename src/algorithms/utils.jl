@@ -50,49 +50,23 @@ end
     Generate a sequence of jobs on a given machine, with a 1|r_j|Lmax criterion
 """
 function generate_sequence(p::Vector{Vector{Int}}, r::Vector{Vector{Int}}, n_i::Vector{Int}, machineJobs::Vector{Vector{Tuple{Int,Int}}}, jobToGraphNode::Vector{Vector{Int}}, graph::SimpleDirectedWeightedGraphAdj{Int, Int}, Cmax::Int64, i::Int, yield_ref)
+    if length(machineJobs[i]) == 0
+        throw(DimensionMismatch("Machine $i has no jobs assigned"))
+    end
     d = dag_paths(graph, sum(n_i) + 2, :longest; reversed = true)
-    newP = [p[job[1]][job[2]] for job in machineJobs[i]]
-    newR = [r[job[1]][job[2]] for job in machineJobs[i]]
-    newD = [Cmax + p[job[1]][job[2]] - d[jobToGraphNode[job[1]][job[2]]] for job in machineJobs[i]]
-    # newD::Vector{Int} = []
-    # for (a, job) in enumerate(machineJobs[i])
-    #     d = dag_paths(graph, jobToGraphNode[job[1]][job[2]], :longest)
-    #     push!(newD, Cmax + p[job[1]][job[2]] - d[sum(n_i) + 2])
-    # end
-    # @assert newD == newD2
-
-    # Lmax2, sequence2, _ = single_machine_release_LMax(newP,newR,newD, yield_ref)
-    Lmax, sequence, microruns = single_machine_release_LMax2(newP,newR,newD, yield_ref)
-    # if Lmax != Lmax2
-    #     @show newP
-    #     @show newR
-    #     @show newD
-    #     @show Lmax
-    #     @show Lmax2
-    #     @show sequence
-    #     @show sequence2
-    #     D1 = []
-    #     D2 = []
-    #     t1 = 0
-    #     t2 = 0
-    #     for s in sequence
-    #         t1 = max(t1, newR[s]) + newP[s]
-    #         push!(D1, t1 - newD[s])
-    #     end
-    #     for s in sequence2
-    #         t2 = max(t2, newR[s]) + newP[s]
-    #         push!(D2, t2 - newD[s])
-    #     end
-    #     @show D1
-    #     @show D2
-
-
-    # end
+    newP = Int64[p[job[1]][job[2]] for job in machineJobs[i]]
+    newR = Int64[r[job[1]][job[2]] for job in machineJobs[i]]
+    newD = Int64[Cmax + p[job[1]][job[2]] - d[jobToGraphNode[job[1]][job[2]]] for job in machineJobs[i]]
+    Lmax, sequence, microruns = single_machine_release_LMax(newP,newR,newD, yield_ref)
     try_yield(yield_ref)
     return Lmax, map(x -> machineJobs[i][x], sequence), microruns
 end
 
 function generate_sequence_pmtn(p::Vector{Vector{Int}}, r::Vector{Vector{Int}}, n_i::Vector{Int}, machineJobs::Vector{Vector{Tuple{Int,Int}}}, jobToGraphNode::Vector{Vector{Int}}, graph::SimpleDirectedWeightedGraphAdj{Int, Int}, Cmax::Int64, i::Int, yield_ref)
+    if length(machineJobs[i]) == 0
+        throw(DimensionMismatch("Machine $i has no jobs assigned"))
+    end
+    
     d = dag_paths(graph, sum(n_i) + 2, :longest; reversed = true)
     newP = [p[job[1]][job[2]] for job in machineJobs[i]]
     newR = [r[job[1]][job[2]] for job in machineJobs[i]]
@@ -105,6 +79,10 @@ end
 
 
 function generate_sequence_dpc(p::Vector{Vector{Int}}, r::Vector{Vector{Int}}, n_i::Vector{Int}, machineJobs::Vector{Vector{Tuple{Int,Int}}}, jobToGraphNode::Vector{Vector{Int}}, graph::SimpleDirectedWeightedGraphAdj{Int, Int}, Cmax::Int64, i::Int, yield_ref)
+    if length(machineJobs[i]) == 0
+        throw(DimensionMismatch("Machine $i has no jobs assigned"))
+    end
+    
     newP = [p[job[1]][job[2]] for job in machineJobs[i]]
     newQ::Vector{Int} = []
     newR = [r[job[1]][job[2]] for job in machineJobs[i]]
@@ -144,8 +122,10 @@ function fix_disjunctive_edges(sequence::Vector{Tuple{Int,Int}}, jobToGraphNode:
     for (job1, job2) in Iterators.zip(sequence, Iterators.drop(sequence, 1))
         i1, j1 = job1[1], job1[2]
         i2, j2 = job2[1], job2[2]
-        add_edge!(graph, jobToGraphNode[i1][j1], jobToGraphNode[i2][j2], p[i1][j1])
-        push!(machineFixedEdges[machine], (jobToGraphNode[i1][j1],jobToGraphNode[i2][j2]))
+        if !(i1 == i2 && j1 == j2 - 1)
+            add_edge!(graph, jobToGraphNode[i1][j1], jobToGraphNode[i2][j2], p[i1][j1])
+            push!(machineFixedEdges[machine], (jobToGraphNode[i1][j1],jobToGraphNode[i2][j2]))
+        end
     end
 end
 """
@@ -155,7 +135,7 @@ Returns util arrays for given instance.
     - `jobToGraphNode::Vector{Vector{Int}}` - array of graph nodes for each job, i.e `jobToGraphNode[i][j]` is a graph node for job `i` and operation `j`
     - `graphNodeToJob::Vector{Tuple{Int,Int}}` - array of operations for each graph node, i.e `graphNodeToJob[a]=(i,j)` is a job and operation for graph node `a`
     - `machineJobs::Vector{Vector{Tuple{Int,Int}}}` - array of operations for each machine, i.e `machineJobs[μ]=[(i1,j1), (i2, j2)]` is a list of jobs for machine `μ`
-    - `machineWithJobs::Vector{Vector{Vector{Tuple{Int,Int}}}} ` - array of operation for each machine and job, i.e `machineWithJobs[μ][i]=(i,j)` is a job and operation for machine `μ` and job `i`
+    - `machineWithJobs::Vector{Vector{Vector{Tuple{Int,Int}}}} ` - array of operation for each machine and job, i.e `machineWithJobs[μ][i]=[(i,j1),(i,j2)]` is a job and operation for machine `μ` and job `i`
 """
 function generate_util_arrays(n, m, n_i, μ)
     jobToGraphNode::Vector{Vector{Int}} = [[0 for _ in 1:n_i[i]] for i in 1:n]

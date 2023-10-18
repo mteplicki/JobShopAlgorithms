@@ -1,7 +1,7 @@
 name = "ShopAlgorithms"
 uuid = "42d7ca29-4f42-4874-a484-515e8b5c8a66"
 authors = ["mteplicki <261726@student.pwr.edu.pl>"]
-version = "0.4.2"
+version = "0.4.3"
 
 [deps]
 DataFrames = "a93c6f00-e57d-5684-b7b6-d8193f3e46c0"

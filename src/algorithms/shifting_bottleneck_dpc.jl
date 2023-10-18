@@ -44,13 +44,25 @@ function shiftingbottleneckdpc(instance::JobShopInstance; yielding::Bool = false
         for i in setdiff(M, M_0)
             # println("M_0: $M_0, i: $i")
             try_yield(yield_ref)
-            CmaxCandidate, sequenceCandidate, add_microruns = generate_sequence_dpc(p, r, n_i, machineJobs, jobToGraphNode, graph, Cmax, i, yield_ref)
-            microruns += add_microruns
-            if CmaxCandidate >= Cmax
-                Cmax = CmaxCandidate
-                sequence = sequenceCandidate
-                k = i
+            try
+                CmaxCandidate, sequenceCandidate, add_microruns = generate_sequence_dpc(p, r, n_i, machineJobs, jobToGraphNode, graph, Cmax, i, yield_ref)
+                microruns += add_microruns
+                if CmaxCandidate >= Cmax
+                    Cmax = CmaxCandidate
+                    sequence = sequenceCandidate
+                    k = i
+                end
+            catch error
+                if error isa DimensionMismatch
+                    continue
+                else
+                    rethrow()
+                end
             end
+        end
+        if k === nothing
+            M_0 = M
+            continue
         end
         M_0 = M_0 ∪ k
         fix_disjunctive_edges(sequence, jobToGraphNode, graph, p, k, machineFixedEdges)
@@ -62,18 +74,25 @@ function shiftingbottleneckdpc(instance::JobShopInstance; yielding::Bool = false
             for (job1, job2) in machineFixedEdges[fixMachine]
                 rem_edge!(graph, job1, job2)
             end
-
-            r, rGraph = generate_release_times(graph, n_i, graphNodeToJob)
-            longestPath = rGraph[sum(n_i)+2]
-            Cmaxcandidate, sequenceCandidate, add_microruns = generate_sequence_dpc(p, r, n_i, machineJobs, jobToGraphNode, graph, Cmax, fixMachine, yield_ref)
-            microruns += add_microruns
-            if Cmaxcandidate >= Cmax
-                graph = backUpGraph
-            else
-                empty!(machineFixedEdges[fixMachine])
-                Cmax = Cmaxcandidate
-                fix_disjunctive_edges(sequenceCandidate, jobToGraphNode, graph, p, fixMachine, machineFixedEdges)
-                
+            try
+                r, rGraph = generate_release_times(graph, n_i, graphNodeToJob)
+                longestPath = rGraph[sum(n_i)+2]
+                Cmaxcandidate, sequenceCandidate, add_microruns = generate_sequence_dpc(p, r, n_i, machineJobs, jobToGraphNode, graph, Cmax, fixMachine, yield_ref)
+                microruns += add_microruns
+                if Cmaxcandidate >= Cmax
+                    graph = backUpGraph
+                else
+                    empty!(machineFixedEdges[fixMachine])
+                    Cmax = Cmaxcandidate
+                    fix_disjunctive_edges(sequenceCandidate, jobToGraphNode, graph, p, fixMachine, machineFixedEdges)
+                end
+            catch error
+                if isa(error, DimensionMismatch)
+                    graph = backUpGraph
+                    continue
+                else
+                    rethrow()
+                end
             end
         end
         # możliwe usprawnienia - być może nie trzeba obliczać za każdym razem Cmax, tylko polegać na wskazaniu algorytmu 1 | r_j | Lmax
