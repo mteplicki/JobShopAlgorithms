@@ -99,7 +99,7 @@ function DataFrames.DataFrame(solution::ShopError)::DataFrame
                 hash(solution),
                 solution.algorithm,
                 0,
-                "",
+                string(solution.objectiveFunction),
                 index,
                 index2,
                 solution.instance.μ[index][index2],
@@ -160,10 +160,10 @@ function dataframe_to_schedules(df::DataFrame)::Vector{ShopResult}
             d[row[:job]] = row[:d]
         end
         jobShopInstance = JobShopInstance(n, m, n_i, p, μ; name=name, d=d)
-        if instance[1, :objectiveFunction] == "Cmax_function"
-            objectiveFunction = Cmax_function
+        objectiveFunction = if instance[1, :objectiveFunction] == "Cmax_function"
+            Cmax_function
         elseif instance[1, :objectiveFunction] == "Lmax_function"
-            objectiveFunction = Lmax_function
+            Lmax_function
         end
         objectiveValue = instance[1, :objectiveValue]
         push!(schedules, ShopSchedule(jobShopInstance, C, objectiveValue, objectiveFunction; algorithm=algorithm, microruns=microruns, timeSeconds=timeSeconds, memoryBytes=memoryBytes))
@@ -184,8 +184,13 @@ function dataframe_to_schedules(df::DataFrame)::Vector{ShopResult}
             μ[row[:job]][row[:operation]] = row[:machine]
             d[row[:job]] = row[:d]
         end
+        objectiveFunction = if instance[1, :objectiveFunction] == "Cmax_function"
+            Cmax_function
+        elseif instance[1, :objectiveFunction] == "Lmax_function"
+            Lmax_function
+        end
         jobShopInstance = JobShopInstance(n, m, n_i, p, μ; name=name, d=d)
-        push!(schedules, ShopError(jobShopInstance, instance[1, :status]; metadata=metadata, algorithm=algorithm, date=date))
+        push!(schedules, ShopError(jobShopInstance, instance[1, :status], objectiveFunction; metadata=metadata, algorithm=algorithm, date=date))
     end
     return schedules
 end

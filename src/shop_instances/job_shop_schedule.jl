@@ -5,17 +5,20 @@ abstract type ShopResult end
 struct ShopError <: ShopResult
     instance::JobShopInstance
     error::String
+    objectiveFunction::ObjectiveFunction
     algorithm::String
     date::DateTime
     metadata::Dict{String, Any}
+    objectiveFunction::ObjectiveFunction
     function ShopError(
         instance::AbstractShop,
-        error::String;
+        error::String,
+        objectiveFunction::ObjectiveFunction;
         algorithm::String="",
         metadata::Dict{String, Any}=Dict{String, Any}(),
         date::DateTime=now()
     )
-        new(instance, error, algorithm, date, metadata)
+        new(instance, objectiveFunction, error, algorithm, date, metadata)
     end
 end
 

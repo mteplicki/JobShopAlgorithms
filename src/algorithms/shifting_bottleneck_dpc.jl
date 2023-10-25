@@ -18,6 +18,7 @@ Carlier algorithm. The solution of the problem is not guaranteed to be optimal.
 - An instance of the job shop scheduling problem in the format required by the `shiftingbottleneckdpc` function. The solution is not guaranteed to be optimal.
 """
 function shiftingbottleneckcarlier(instance::JobShopInstance; yielding::Bool = false, with_priority_queue::Bool = true, with_dpc::Bool = true, carlier_timeout::Union{Nothing,Float64} = nothing)
+    algorithmName = "Shifting Bottleneck" * (with_dpc ? " - DPC" : " - Carlier") * (with_priority_queue ? "" : " with stack") * (carlier_timeout === nothing ? "" : " with timeout $(carlier_timeout)")
     _ , timeSeconds, bytes = @timed begin 
     n, m, n_i, p, μ = instance.n, instance.m, instance.n_i, instance.p, instance.μ
     microruns = 0
@@ -59,7 +60,7 @@ function shiftingbottleneckcarlier(instance::JobShopInstance; yielding::Bool = f
                 end
             catch error
                 if isa(error, ArgumentError)
-                    return ShopError(instance, "Cycle of fixed disjunctive edges occured."; algorithm = "Shifting Bottleneck" * (with_dpc ? " - DPC" : " - Carlier") * (with_priority_queue ? "" : " with stack"))
+                    return ShopError(instance, "Cycle of fixed disjunctive edges occured.", Cmax_function; algorithm = algorithmName)
                 elseif error isa DimensionMismatch
                     continue
                 else
@@ -99,7 +100,7 @@ function shiftingbottleneckcarlier(instance::JobShopInstance; yielding::Bool = f
                 end
             catch error
                 if isa(error, ArgumentError)
-                    return ShopError(instance, "Cycle of fixed disjunctive edges occured."; algorithm = "Shifting Bottleneck" * (with_dpc ? " - DPC" : " - Carlier") * (with_priority_queue ? "" : " with stack"))
+                    return ShopError(instance, "Cycle of fixed disjunctive edges occured.", Cmax_function; algorithm = algorithmName)
                 elseif isa(error, DimensionMismatch)
                     graph = backUpGraph
                     continue
@@ -119,7 +120,7 @@ function shiftingbottleneckcarlier(instance::JobShopInstance; yielding::Bool = f
         r + p,
         Cmax,
         Cmax_function;
-        algorithm = "Shifting Bottleneck" * (with_dpc ? " - DPC" : " - Carlier") * (with_priority_queue ? "" : " with stack"),
+        algorithm = algorithmName,
         memoryBytes = bytes,
         timeSeconds = timeSeconds,
         microruns = microruns

@@ -60,7 +60,7 @@ function shiftingbottleneck(
                 end
             catch error
                 if isa(error, ArgumentError)
-                    return ShopError(instance, "Cycle of fixed disjunctive edges occured."; algorithm = "Shifting Bottleneck")
+                    return ShopError(instance, "Cycle of fixed disjunctive edges occured.", Cmax_function; algorithm = "Shifting Bottleneck")
                 elseif isa(error, DimensionMismatch) 
                     continue
                 else
@@ -96,7 +96,7 @@ function shiftingbottleneck(
                 end
             catch error
                 if isa(error, ArgumentError)
-                    return ShopError(instance, "Cycle of fixed disjunctive edges occured."; algorithm = "Shifting Bottleneck")
+                    return ShopError(instance, "Cycle of fixed disjunctive edges occured.", Cmax_function; algorithm = "Shifting Bottleneck")
                 elseif isa(error, DimensionMismatch) 
                     graph = backUpGraph
                     continue
@@ -112,7 +112,7 @@ function shiftingbottleneck(
             Cmax = rGraph[sum(n_i)+2]
         catch error
             if isa(error, ArgumentError)
-                return ShopError(instance, "Cycle of fixed disjunctive edges occured."; algorithm = "Shifting Bottleneck")
+                return ShopError(instance, "Cycle of fixed disjunctive edges occured.", Cmax_function; algorithm = "Shifting Bottleneck")
             else 
                 rethrow()   
             end
