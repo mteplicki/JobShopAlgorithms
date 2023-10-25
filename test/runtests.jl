@@ -34,7 +34,7 @@ include("ShiftingBottleneckDPCTest.jl")
 
     DPCTest()
 
-    ShiftingBottleneckDPCTest()
+    ShiftingBottleneckCarlierTest()
 
 end
 

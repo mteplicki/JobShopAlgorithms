@@ -1,4 +1,5 @@
-import ShopAlgorithms.Algorithms: dpc_sequence, test_feasibility
+import ShopAlgorithms.Algorithms.carlier_dpc as dpc_sequence
+import ShopAlgorithms.Algorithms.test_feasibility as test_feasibility
 
 function DPCTest()
 @testset "DPCTest" verbose=true begin

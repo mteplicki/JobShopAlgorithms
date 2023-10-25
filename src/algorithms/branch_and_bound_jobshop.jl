@@ -36,40 +36,40 @@ function generate_active_schedules(
     jobToGraphNode, graphNodeToJob, machineJobs, _ = generate_util_arrays(n, m, n_i, μ)
     upperBound = typemax(Int64)
     selectedNode::Union{ActiveScheduleNode,Nothing} = nothing
-    S = ActiveScheduleNode[]
-    graph = generate_conjuctive_graph(n, n_i, p, jobToGraphNode)
+    S = Stack{ActiveScheduleNode}()
+    conjuctiveGraph = generate_conjuctive_graph(n, n_i, p, jobToGraphNode)
 
     node = ActiveScheduleNode(
         [(i, 1) for i = 1:n],
         nothing,
-        graph,
+        SimpleDirectedWeightedGraphAdj(sum(n_i) + 2, Int),
         Dict{Tuple{Int64,Int64},Bool}(),
         [[0 for _ in 1:a] for a in n_i]
     )
-    append!
 
-    node.r, rGraph = generate_release_times(node.graph, n_i, graphNodeToJob)
+    disjunctiveGraph = DisjunctiveWeightedGraph(conjuctiveGraph, node.graph)
+    node.r, rGraph = generate_release_times(disjunctiveGraph, n_i, graphNodeToJob)
     node.lowerBound = rGraph[sum(n_i)+2]
     push!(S, node)
     skippedNodes = 0
     terminalNodes = 0
     while !isempty(S)
-        node = pop!(S)
         try_yield(yield_ref)
+        node = pop!(S)
+        if node.lowerBound >= upperBound
+            skippedNodes += 1
+            continue
+        end
         # jeżli wszystkie operacje zostały zaplanowane, to sprawdzamy, czy wartość tego węzła jest mniejsza niż obecna górna granica algorytmu
         if isempty(node.Ω)
             terminalNodes += 1
-            # println("terminal node, lowerBound: $(node.lowerBound), upperBound: $upperBound")
-            node.r, rGraph = generate_release_times(node.graph, n_i, graphNodeToJob)
+            disjunctiveGraph = DisjunctiveWeightedGraph(conjuctiveGraph, node.graph)
+            node.r, rGraph = generate_release_times(disjunctiveGraph, n_i, graphNodeToJob)
             makespan = rGraph[sum(n_i)+2]
             if makespan < upperBound
                 upperBound = makespan
                 selectedNode = node
             end
-            continue
-        end
-        if node.lowerBound >= upperBound
-            skippedNodes += 1
             continue
         end
         # wygeneruj zbiór Ω_prim, czyli zbiór operacji, które mogą być zaplanowane w tym węźle
@@ -97,7 +97,8 @@ function generate_active_schedules(
                     add_edge!(newNode.graph, jobToGraphNode[selectedOperation[1]][selectedOperation[2]], jobToGraphNode[operation[1]][operation[2]], p[selectedOperation[1]][selectedOperation[2]])
                 end
             end
-            newNode.r, rGraph = generate_release_times(newNode.graph, n_i, graphNodeToJob)
+            disjunctiveGraph = DisjunctiveWeightedGraph(conjuctiveGraph, newNode.graph)
+            newNode.r, rGraph = generate_release_times(disjunctiveGraph, n_i, graphNodeToJob)
             longestPathLowerBound = rGraph[sum(n_i)+2]
             # obliczamy dolną granicę dla tego węzła, obliczając najdłuższą ścieżkę w grafie z źródła do ujścia
             newNode.lowerBound = max(newNode.lowerBound, longestPathLowerBound)
@@ -108,10 +109,10 @@ function generate_active_schedules(
             for machineNumber in 1:m
                 try
                     if bounding_algorithm == :pmtn
-                        LmaxCandidate, _ = generate_sequence_pmtn(p, newNode.r, n_i, machineJobs, jobToGraphNode, newNode.graph, newNode.lowerBound, machineNumber, yield_ref)
+                        LmaxCandidate, _ = generate_sequence_pmtn(instance, newNode.r, machineJobs, jobToGraphNode, disjunctiveGraph, newNode.lowerBound, machineNumber, yield_ref)
                         microruns += 1
                     else
-                        LmaxCandidate, _, new_microruns = generate_sequence(p, newNode.r, n_i, machineJobs, jobToGraphNode, newNode.graph, newNode.lowerBound, machineNumber, yield_ref)
+                        LmaxCandidate, _, new_microruns = generate_sequence(instance, newNode.r, machineJobs, jobToGraphNode, disjunctiveGraph, newNode.lowerBound, machineNumber, yield_ref)
                         microruns += new_microruns
                     end
                     lowerBoundCandidate = max(newNode.lowerBound + LmaxCandidate, lowerBoundCandidate)
@@ -131,7 +132,9 @@ function generate_active_schedules(
         filter!(x -> x.lowerBound < upperBound, listOfNodes)
         sort!(listOfNodes, by=x -> x.lowerBound, rev=true)
         skippedNodes += (length(Ω_prim) - length(listOfNodes))
-        append!(S, listOfNodes)
+        for newNode1 in listOfNodes
+            push!(S, newNode1)
+        end
     end
     end
     return ShopSchedule(

@@ -1,21 +1,23 @@
-export shiftingbottleneckdpc
+export shiftingbottleneckcarlier
 
 
 
 """
-    shiftingbottleneckdpc(instance::JobShopInstance; yielding::Bool=false)
+    shiftingbottleneckcarlier(instance::JobShopInstance; yielding::Bool = false, with_priority_queue::Bool = true, with_dpc::Bool = true, carlier_timeout::Union{Nothing,Float64} = nothing)
 
 Solves the job shop scheduling `J || Cmax` problem with recirculation allowed using the Shifting Bottleneck algorithm with
-Delayed Precedence Constraints algorithm. The solution of the problem is not guaranteed to be optimal.
+Carlier algorithm. The solution of the problem is not guaranteed to be optimal.
 
 # Arguments
 - `instance::JobShopInstance`: An instance of the job shop scheduling problem.
 - `yielding::Bool=false`: If `true`, the algorithm will yield after each iteration. This is useful for timeouting the algorithm.
+- `with_dpc::Bool=true`: If `true`, the algorithm will use the DPC algorithm to find the longest path in the graph. Otherwise, the algorithm will use the Carlier algorithm.
+- `with_priority_queue::Bool=true`: If `true`, the algorithm will use a priority queue to find the longest path in Carlier algorithm. Otherwise, it will use a simple stack.
 
 # Returns
 - An instance of the job shop scheduling problem in the format required by the `shiftingbottleneckdpc` function. The solution is not guaranteed to be optimal.
 """
-function shiftingbottleneckdpc(instance::JobShopInstance; yielding::Bool = false)
+function shiftingbottleneckcarlier(instance::JobShopInstance; yielding::Bool = false, with_priority_queue::Bool = true, with_dpc::Bool = true, carlier_timeout::Union{Nothing,Float64} = nothing)
     _ , timeSeconds, bytes = @timed begin 
     n, m, n_i, p, μ = instance.n, instance.m, instance.n_i, instance.p, instance.μ
     microruns = 0
@@ -42,10 +44,13 @@ function shiftingbottleneckdpc(instance::JobShopInstance; yielding::Bool = false
         # dla każdej maszyny, dla której nie ustalono jeszcze krawędzi disjunktywnych
         # wybierz tę, dla której algorytm 1 | r_j | Lmax wskaże najdłuższy czas wykonania (Bottleneck)
         for i in setdiff(M, M_0)
-            # println("M_0: $M_0, i: $i")
             try_yield(yield_ref)
             try
-                CmaxCandidate, sequenceCandidate, add_microruns = generate_sequence_dpc(p, r, n_i, machineJobs, jobToGraphNode, graph, Cmax, i, yield_ref)
+                CmaxCandidate, sequenceCandidate, add_microruns = if with_dpc
+                    generate_sequence_dpc(instance, r, machineJobs, jobToGraphNode, graph, i, yield_ref; with_priority_queue = with_priority_queue, carlier_timeout = carlier_timeout)
+                else
+                    generate_sequence_carlier(instance, r, machineJobs, jobToGraphNode, graph, i, yield_ref; with_priority_queue = with_priority_queue, carlier_timeout = carlier_timeout)
+                end
                 microruns += add_microruns
                 if CmaxCandidate >= Cmax
                     Cmax = CmaxCandidate
@@ -53,7 +58,9 @@ function shiftingbottleneckdpc(instance::JobShopInstance; yielding::Bool = false
                     k = i
                 end
             catch error
-                if error isa DimensionMismatch
+                if isa(error, ArgumentError)
+                    return ShopError(instance, "Cycle of fixed disjunctive edges occured."; algorithm = "Shifting Bottleneck" * (with_dpc ? " - DPC" : " - Carlier") * (with_priority_queue ? "" : " with stack"))
+                elseif error isa DimensionMismatch
                     continue
                 else
                     rethrow()
@@ -77,17 +84,23 @@ function shiftingbottleneckdpc(instance::JobShopInstance; yielding::Bool = false
             try
                 r, rGraph = generate_release_times(graph, n_i, graphNodeToJob)
                 longestPath = rGraph[sum(n_i)+2]
-                Cmaxcandidate, sequenceCandidate, add_microruns = generate_sequence_dpc(p, r, n_i, machineJobs, jobToGraphNode, graph, Cmax, fixMachine, yield_ref)
+                CmaxCandidate, sequenceCandidate, add_microruns = if with_dpc
+                    generate_sequence_dpc(instance, r, machineJobs, jobToGraphNode, graph, fixMachine, yield_ref; with_priority_queue = with_priority_queue, carlier_timeout = carlier_timeout)
+                else
+                    generate_sequence_carlier(instance, r, machineJobs, jobToGraphNode, graph, fixMachine, yield_ref; with_priority_queue = with_priority_queue, carlier_timeout = carlier_timeout)
+                end
                 microruns += add_microruns
-                if Cmaxcandidate >= Cmax
+                if CmaxCandidate >= Cmax
                     graph = backUpGraph
                 else
                     empty!(machineFixedEdges[fixMachine])
-                    Cmax = Cmaxcandidate
+                    Cmax = CmaxCandidate
                     fix_disjunctive_edges(sequenceCandidate, jobToGraphNode, graph, p, fixMachine, machineFixedEdges)
                 end
             catch error
-                if isa(error, DimensionMismatch)
+                if isa(error, ArgumentError)
+                    return ShopError(instance, "Cycle of fixed disjunctive edges occured."; algorithm = "Shifting Bottleneck" * (with_dpc ? " - DPC" : " - Carlier") * (with_priority_queue ? "" : " with stack"))
+                elseif isa(error, DimensionMismatch)
                     graph = backUpGraph
                     continue
                 else
@@ -106,7 +119,7 @@ function shiftingbottleneckdpc(instance::JobShopInstance; yielding::Bool = false
         r + p,
         Cmax,
         Cmax_function;
-        algorithm = "Shifting Bottleneck - DPC",
+        algorithm = "Shifting Bottleneck" * (with_dpc ? " - DPC" : " - Carlier") * (with_priority_queue ? "" : " with stack"),
         memoryBytes = bytes,
         timeSeconds = timeSeconds,
         microruns = microruns

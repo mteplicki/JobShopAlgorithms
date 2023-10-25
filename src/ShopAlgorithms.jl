@@ -4,16 +4,23 @@ module ShopAlgorithms
     include("instance_loaders/instance_loaders.jl")
     include("shop_graphs/shop_graphs.jl")
     include("algorithms/algorithms.jl")
-    include("plotter/plotter.jl")
-    export Algorithms, ShopInstances, InstanceLoaders, Plotters, Constraints
+    include("plotters/plotter.jl")
+    export Algorithms, ShopInstances, InstanceLoaders, Plotters, Constraints, ShopGraphs
 
 
     using Random
     function test1()
-        instance = open(x->read(x, InstanceLoaders.TaillardSpecification), "test/trickytest/m102n_i102.txt")
+        rng = MersenneTwister(1234)
+        # instance = InstanceLoaders.random_instance_generator(4,2; rng=rng, job_recirculation=true, n_i=[6 for _ in 1:4], machine_repetition=true)
+
+        instance = open(x->read(x, InstanceLoaders.StandardSpecification), "test/instances/test3.txt")
         println(instance)
-        result = Algorithms.two_jobs_job_shop(instance)
+        result = Algorithms.generate_active_schedules_carlier(instance; with_dpc=false, with_priority_queue=false)
+        result = Algorithms.generate_active_schedules_carlier(instance; with_dpc=false, with_priority_queue=false)
         println(result)
+        result2 = Algorithms.generate_active_schedules(instance)
+        result2 = Algorithms.generate_active_schedules(instance)
+        println(result2)
     end
     # test1()
 end # module JobShopAlgorithms

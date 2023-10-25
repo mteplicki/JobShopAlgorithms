@@ -3,6 +3,11 @@ import Graphs.add_edge!
 export YIELD_TIME
 YIELD_TIME = 0.5
 
+Base.sizehint!(queue::PriorityQueue{K,V}) where {K,V} = begin 
+    sizehint!(queue.xs)
+    sizehint!(queue.index)
+end
+
 function try_yield(last_time::Union{Ref{Float64}, Nothing})
     if isnothing(last_time)
         return
@@ -14,7 +19,7 @@ function try_yield(last_time::Union{Ref{Float64}, Nothing})
     end
 end
 
-mutable struct ActiveScheduleNode
+@kwdef mutable struct ActiveScheduleNode
     Ω::Vector{Tuple{Int,Int}}
     lowerBound::Union{Int64,Nothing}
     graph::AbstractGraph
@@ -33,7 +38,7 @@ end
 """ 
 generates a release times for a given disjunctive graph
 """
-function generate_release_times(graph::SimpleDirectedWeightedGraphAdj{Int, Int}, n_i::Vector{Int}, graphNodeToJob::Vector{Tuple{Int,Int}})
+function generate_release_times(graph::AbstractGraph, n_i::Vector{Int}, graphNodeToJob::Vector{Tuple{Int,Int}})
     rGraph = dag_paths(graph, 1, :longest)
     r = [[0 for _ in 1:a] for a in n_i]
     for (index, value) in enumerate(rGraph)
@@ -49,10 +54,11 @@ end
 """
     Generate a sequence of jobs on a given machine, with a 1|r_j|Lmax criterion
 """
-function generate_sequence(p::Vector{Vector{Int}}, r::Vector{Vector{Int}}, n_i::Vector{Int}, machineJobs::Vector{Vector{Tuple{Int,Int}}}, jobToGraphNode::Vector{Vector{Int}}, graph::SimpleDirectedWeightedGraphAdj{Int, Int}, Cmax::Int64, i::Int, yield_ref)
+function generate_sequence(instance::JobShopInstance, r::Vector{Vector{Int}}, machineJobs::Vector{Vector{Tuple{Int,Int}}}, jobToGraphNode::Vector{Vector{Int}}, graph::AbstractGraph, Cmax::Int64, i::Int, yield_ref)
     if length(machineJobs[i]) == 0
         throw(DimensionMismatch("Machine $i has no jobs assigned"))
     end
+    p, n_i = instance.p, instance.n_i
     d = dag_paths(graph, sum(n_i) + 2, :longest; reversed = true)
     newP = Int64[p[job[1]][job[2]] for job in machineJobs[i]]
     newR = Int64[r[job[1]][job[2]] for job in machineJobs[i]]
@@ -62,11 +68,25 @@ function generate_sequence(p::Vector{Vector{Int}}, r::Vector{Vector{Int}}, n_i::
     return Lmax, map(x -> machineJobs[i][x], sequence), microruns
 end
 
-function generate_sequence_pmtn(p::Vector{Vector{Int}}, r::Vector{Vector{Int}}, n_i::Vector{Int}, machineJobs::Vector{Vector{Tuple{Int,Int}}}, jobToGraphNode::Vector{Vector{Int}}, graph::SimpleDirectedWeightedGraphAdj{Int, Int}, Cmax::Int64, i::Int, yield_ref)
+function generate_sequence_carlier(instance::JobShopInstance, r::Vector{Vector{Int}}, machineJobs::Vector{Vector{Tuple{Int,Int}}}, jobToGraphNode::Vector{Vector{Int}}, graph::AbstractGraph, i::Int, yield_ref; with_priority_queue::Bool = true, carlier_timeout::Union{Nothing,Float64} = nothing)
     if length(machineJobs[i]) == 0
         throw(DimensionMismatch("Machine $i has no jobs assigned"))
     end
-    
+    p, n_i = instance.p, instance.n_i
+    d = dag_paths(graph, sum(n_i) + 2, :longest; reversed = true)
+    newP = Int64[p[job[1]][job[2]] for job in machineJobs[i]]
+    newR = Int64[r[job[1]][job[2]] for job in machineJobs[i]]
+    newQ = Int64[d[jobToGraphNode[job[1]][job[2]]] - p[job[1]][job[2]] for job in machineJobs[i]]
+    Cmax, sequence, microruns = carlier(newP,newR,newQ, yield_ref; with_priority_queue = with_priority_queue, carlier_timeout =carlier_timeout)
+    try_yield(yield_ref)
+    return Cmax, map(x -> machineJobs[i][x], sequence), microruns
+end
+
+function generate_sequence_pmtn(instance::JobShopInstance, r::Vector{Vector{Int}}, machineJobs::Vector{Vector{Tuple{Int,Int}}}, jobToGraphNode::Vector{Vector{Int}}, graph::AbstractGraph, Cmax::Int, i::Int, yield_ref)
+    if length(machineJobs[i]) == 0
+        throw(DimensionMismatch("Machine $i has no jobs assigned"))
+    end
+    p, n_i = instance.p, instance.n_i
     d = dag_paths(graph, sum(n_i) + 2, :longest; reversed = true)
     newP = [p[job[1]][job[2]] for job in machineJobs[i]]
     newR = [r[job[1]][job[2]] for job in machineJobs[i]]
@@ -78,11 +98,11 @@ function generate_sequence_pmtn(p::Vector{Vector{Int}}, r::Vector{Vector{Int}}, 
 end
 
 
-function generate_sequence_dpc(p::Vector{Vector{Int}}, r::Vector{Vector{Int}}, n_i::Vector{Int}, machineJobs::Vector{Vector{Tuple{Int,Int}}}, jobToGraphNode::Vector{Vector{Int}}, graph::SimpleDirectedWeightedGraphAdj{Int, Int}, Cmax::Int64, i::Int, yield_ref)
+function generate_sequence_dpc(instance:: JobShopInstance, r::Vector{Vector{Int}}, machineJobs::Vector{Vector{Tuple{Int,Int}}}, jobToGraphNode::Vector{Vector{Int}}, graph::AbstractGraph, i::Int, yield_ref; with_priority_queue::Bool = true, carlier_timeout::Union{Nothing,Float64} = nothing)
     if length(machineJobs[i]) == 0
         throw(DimensionMismatch("Machine $i has no jobs assigned"))
     end
-    
+    p, n_i = instance.p, instance.n_i
     newP = [p[job[1]][job[2]] for job in machineJobs[i]]
     newQ::Vector{Int} = []
     newR = [r[job[1]][job[2]] for job in machineJobs[i]]
@@ -94,11 +114,11 @@ function generate_sequence_dpc(p::Vector{Vector{Int}}, r::Vector{Vector{Int}}, n
             newDelay[a, b] = d[jobToGraphNode[job2[1]][job2[2]]]
         end
     end
-    Cmax, sequence, microruns = dpc_sequence(newP, newR, newQ, newDelay, yield_ref)
+    Cmax, sequence, microruns = carlier_dpc(newP, newR, newQ, newDelay, yield_ref; with_priority_queue = with_priority_queue, carlier_timeout =carlier_timeout)
     return Cmax, map(x -> machineJobs[i][x], sequence), microruns
 end
 
-function generate_data(p::Vector{Vector{Int}}, r::Vector{Vector{Int}}, n_i::Vector{Int}, machineJobs::Vector{Vector{Tuple{Int,Int}}}, jobToGraphNode::Vector{Vector{Int}}, graph::SimpleDirectedWeightedGraphAdj{Int, Int}, Cmax::Int64, i::Int)
+function generate_data(p::Vector{Vector{Int}}, r::Vector{Vector{Int}}, n_i::Vector{Int}, machineJobs::Vector{Vector{Tuple{Int,Int}}}, jobToGraphNode::Vector{Vector{Int}}, graph::AbstractGraph, Cmax::Int64, i::Int)
     newP = [p[job[1]][job[2]] for job in machineJobs[i]]
     newQ::Vector{Int} = []
     newD::Vector{Int} = []
@@ -118,7 +138,7 @@ end
 """
     Fix a disjunctive edges with a given sequence of jobs on a given machine
 """
-function fix_disjunctive_edges(sequence::Vector{Tuple{Int,Int}}, jobToGraphNode::Vector{Vector{Int}}, graph::SimpleDirectedWeightedGraphAdj{Int, Int}, p::Vector{Vector{Int}}, machine::Int64, machineFixedEdges::Vector{Vector{Tuple{Int,Int}}})
+function fix_disjunctive_edges(sequence::Vector{Tuple{Int,Int}}, jobToGraphNode::Vector{Vector{Int}}, graph::AbstractGraph, p::Vector{Vector{Int}}, machine::Int64, machineFixedEdges::Vector{Vector{Tuple{Int,Int}}})
     for (job1, job2) in Iterators.zip(sequence, Iterators.drop(sequence, 1))
         i1, j1 = job1[1], job1[2]
         i2, j2 = job2[1], job2[2]

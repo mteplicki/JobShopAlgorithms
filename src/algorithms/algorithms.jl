@@ -7,10 +7,10 @@ module Algorithms
     import ..ShopAlgorithms.ShopInstances.ObjectiveFunction
     import Graphs.add_edge!
     include("utils.jl")
-    include("dpc_algorithms.jl")
+    include("carlier_algorithms.jl")
     include("single_machine_release_lmax.jl")
     include("branch_and_bound_jobshop.jl")
-    include("branch_and_bound_dpc.jl")
+    include("branch_and_bound_carlier.jl")
     include("shifting_bottleneck.jl")
     include("shifting_bottleneck_dpc.jl")
     include("two_jobs_job_shop.jl")

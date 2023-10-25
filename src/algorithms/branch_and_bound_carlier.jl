@@ -1,23 +1,32 @@
-export generate_active_schedules_dpc
+export generate_active_schedules_carlier
 
 
 
 
 """
-    generate_active_schedules(instance::JobShopInstance; yielding::Bool=false)
+    generate_active_schedules_carlier(
+        instance::JobShopInstance;
+        yielding::Bool = false,
+        with_dpc::Bool = false,
+        with_priority_queue::Bool = false
+    )
 
 Branch and Bound algorithm for the Job Shop Scheduling problem `J || Cmax` with no recirculation.
 
 # Arguments
 - `instance::JobShopInstance`: A job shop instance.
 - `yielding::Bool=false`: If `true`, the algorithm will yield after each iteration. This is useful for timeouting the algorithm.
+- `with_dpc::Bool=true`: If `true`, the algorithm will use the DPC algorithm to find the longest path in the graph. Otherwise, the algorithm will use the Carlier algorithm.
+- `with_priority_queue::Bool=true`: If `true`, the algorithm will use a priority queue to find the node in Carlier algorithm. Otherwise, it will use a simple stack.
 
 # Returns
 - `ShopSchedule`: A ShopSchedule object representing the solution to the job shop problem.
 """
-function generate_active_schedules_dpc(
+function generate_active_schedules_carlier(
     instance::JobShopInstance;
-    yielding::Bool = false
+    yielding::Bool = false,
+    with_dpc::Bool = false,
+    with_priority_queue::Bool = false
 )
     _ , timeSeconds, bytes = @timed begin 
     n, m, n_i, p, μ = instance.n, instance.m, instance.n_i, instance.p, instance.μ
@@ -28,30 +37,40 @@ function generate_active_schedules_dpc(
     jobToGraphNode, graphNodeToJob, machineJobs, _ = generate_util_arrays(n, m, n_i, μ)
     upperBound = typemax(Int64)
     selectedNode::Union{ActiveScheduleNode,Nothing} = nothing
-    S = ActiveScheduleNode[]
-    graph = generate_conjuctive_graph(n, n_i, p, jobToGraphNode)
+    S = Stack{ActiveScheduleNode}()
+    conjuctiveGraph = generate_conjuctive_graph(n, n_i, p, jobToGraphNode)
 
     node = ActiveScheduleNode(
         [(i, 1) for i = 1:n],
         nothing,
-        graph,
+        SimpleDirectedWeightedGraphAdj(sum(n_i) + 2, Int),
         Dict{Tuple{Int64,Int64},Bool}(),
         [[0 for _ in 1:a] for a in n_i]
     )
 
-    node.r, rGraph = generate_release_times(node.graph, n_i, graphNodeToJob)
+    disjunctiveGraph = DisjunctiveWeightedGraph(conjuctiveGraph, node.graph)
+    node.r, rGraph = generate_release_times(disjunctiveGraph, n_i, graphNodeToJob)
     node.lowerBound = rGraph[sum(n_i)+2]
     push!(S, node)
     skippedNodes = 0
     terminalNodes = 0
+
+    test = -9
     while !isempty(S)
         node = pop!(S)
+        # println("node, lowerBound: $(node.lowerBound), upperBound: $upperBound")
+        # if node.lowerBound == 55 && upperBound == 58
+        #     test += 1
+        #     # println("node, lowerBound: $(node.lowerBound), upperBound: $upperBound, test: $test")
+        # end
+
         try_yield(yield_ref)
         # jeżli wszystkie operacje zostały zaplanowane, to sprawdzamy, czy wartość tego węzła jest mniejsza niż obecna górna granica algorytmu
         if isempty(node.Ω)
             terminalNodes += 1
-            # println("terminal node, lowerBound: $(node.lowerBound), upperBound: $upperBound")
-            node.r, rGraph = generate_release_times(node.graph, n_i, graphNodeToJob)
+            
+            disjunctiveGraph = DisjunctiveWeightedGraph(conjuctiveGraph, node.graph)
+            node.r, rGraph = generate_release_times(disjunctiveGraph, n_i, graphNodeToJob)
             makespan = rGraph[sum(n_i)+2]
             if makespan < upperBound
                 upperBound = makespan
@@ -80,7 +99,7 @@ function generate_active_schedules_dpc(
             if selectedOperation[2] < n_i[selectedOperation[1]]
                 push!(newNode.Ω, (selectedOperation[1], selectedOperation[2] + 1))
             end
-            isnothing(yield_ref) || try_yield(yield_ref)
+            try_yield(yield_ref)
             
             # dodajemy krawędzie do grafu z selectedOperation do innych operacji z tej maszyny
             for operation in machineJobs[μ[selectedOperation[1]][selectedOperation[2]]]
@@ -88,17 +107,32 @@ function generate_active_schedules_dpc(
                     add_edge!(newNode.graph, jobToGraphNode[selectedOperation[1]][selectedOperation[2]], jobToGraphNode[operation[1]][operation[2]], p[selectedOperation[1]][selectedOperation[2]])
                 end
             end
-            newNode.r, rGraph = generate_release_times(newNode.graph, n_i, graphNodeToJob)
+            disjunctiveGraph = DisjunctiveWeightedGraph(conjuctiveGraph, newNode.graph)
+            newNode.r, rGraph = generate_release_times(disjunctiveGraph, n_i, graphNodeToJob)
             longestPathLowerBound = rGraph[sum(n_i)+2]
             # obliczamy dolną granicę dla tego węzła, obliczając najdłuższą ścieżkę w grafie z źródła do ujścia
             newNode.lowerBound = max(newNode.lowerBound, longestPathLowerBound)
             lowerBoundCandidate = newNode.lowerBound
             
             # poprawiamy dolną granicę, za pomocą algorytmu DPC
+            
             for machineNumber in 1:m
-                Cmaxcandidate, _ , new_microruns = generate_sequence_dpc(p, newNode.r, n_i, machineJobs, jobToGraphNode, newNode.graph, newNode.lowerBound, machineNumber, yield_ref)
-                microruns += new_microruns               
-                lowerBoundCandidate = max(Cmaxcandidate, lowerBoundCandidate)
+                try
+                    if with_dpc
+                        CmaxCandidate, _, new_microruns = generate_sequence_dpc(instance, newNode.r, machineJobs, jobToGraphNode, disjunctiveGraph, machineNumber, yield_ref; with_priority_queue = with_priority_queue)
+                        microruns += new_microruns
+                    else
+                        CmaxCandidate, _, new_microruns = generate_sequence_carlier(instance, newNode.r, machineJobs, jobToGraphNode, disjunctiveGraph, machineNumber, yield_ref; with_priority_queue = with_priority_queue)
+                        microruns += new_microruns
+                    end
+                    lowerBoundCandidate = max(CmaxCandidate, lowerBoundCandidate)
+                catch error
+                    if error isa DimensionMismatch
+                        continue
+                    else
+                        rethrow()
+                    end
+                end
             end
             newNode.lowerBound = lowerBoundCandidate
             push!(listOfNodes, newNode)
@@ -108,7 +142,9 @@ function generate_active_schedules_dpc(
         filter!(x -> x.lowerBound < upperBound, listOfNodes)
         sort!(listOfNodes, by=x -> x.lowerBound, rev=true)
         skippedNodes += (length(Ω_prim) - length(listOfNodes))
-        append!(S, listOfNodes)
+        for newNode in listOfNodes
+            push!(S, newNode)
+        end
     end
     end
     return ShopSchedule(
@@ -116,7 +152,7 @@ function generate_active_schedules_dpc(
         selectedNode.r + p,
         maximum(maximum.(selectedNode.r + p)),
         Cmax_function;
-        algorithm = "Branch and Bound - DPC",
+        algorithm = "Branch and Bound" * (with_dpc ? " - DPC" : " - Carlier") * (with_priority_queue ? "" : " with stack"),
         microruns = microruns,
         timeSeconds = timeSeconds,
         memoryBytes = bytes

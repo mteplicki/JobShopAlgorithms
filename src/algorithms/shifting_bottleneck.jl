@@ -51,7 +51,7 @@ function shiftingbottleneck(
         # wybierz tę, dla której algorytm 1 | r_j | Lmax wskaże najdłuższy czas wykonania (Bottleneck)
         for i in setdiff(M, M_0)
             try 
-                LmaxCandidate, sequenceCandidate, add_microruns = generate_sequence(p, r, n_i, machineJobs, jobToGraphNode, graph, Cmax, i, yield_ref)     
+                LmaxCandidate, sequenceCandidate, add_microruns = generate_sequence(instance, r, machineJobs, jobToGraphNode, graph, Cmax, i, yield_ref)     
                 microruns += add_microruns
                 if LmaxCandidate >= Lmax
                     Lmax = LmaxCandidate
@@ -85,7 +85,7 @@ function shiftingbottleneck(
             try
                 r, rGraph = generate_release_times(graph, n_i, graphNodeToJob)
                 longestPath = rGraph[sum(n_i)+2]
-                LmaxCandidate, sequenceCandidate, add_microruns = generate_sequence(p, r, n_i, machineJobs, jobToGraphNode, graph, Cmax, fixMachine, yield_ref)
+                LmaxCandidate, sequenceCandidate, add_microruns = generate_sequence(instance, r, machineJobs, jobToGraphNode, graph, Cmax, fixMachine, yield_ref)
                 microruns += add_microruns
                 if LmaxCandidate + longestPath >= Cmax
                     graph = backUpGraph

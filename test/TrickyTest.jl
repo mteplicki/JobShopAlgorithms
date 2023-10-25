@@ -11,7 +11,7 @@ function TrickyTest()
         else
             @test isa(Algorithms.shiftingbottleneck(instance; suppress_warnings=true), ShopInstances.ShopError)
         end
-        @test isa(Algorithms.shiftingbottleneckdpc(instance), ShopInstances.ShopResult)
+        @test isa(Algorithms.shiftingbottleneckcarlier(instance), ShopInstances.ShopResult)
     end
 
 end

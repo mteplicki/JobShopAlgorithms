@@ -33,47 +33,33 @@ end
 A simple directed weighted graph implementation using an adjacency list representation.
 
 # Fields
-- `vertices::Vector{T}`: A vector of vertices of type `T`.
-- `edges::Vector{Vector{SimpleWeightedEdge{T,U}}}`: A vector of edges represented as a vector of `SimpleWeightedEdge{T,U}`.
+- `edges::Vector{Vector{SimpleDirectedWeightedEdge{T,U}}}`: A vector of out edges represented as a vector of `SimpleDirectedWeightedEdge{T,U}`.
+- `edges_transpose::Vector{Vector{SimpleDirectedWeightedEdge{T,U}}}`: A vector of in edges represented as a vector of `SimpleDirectedWeightedEdge{T,U}`.
 
 # Constructors
-- `SimpleWeightedGraphAdj{T,U}(vertices::Vector{T}, edges::Vector{Vector{SimpleWeightedEdge{T,U}}})`: Constructs a new `SimpleWeightedGraphAdj{T,U}` object with the given vertices and edges.
+- `SimpleWeightedGraphAdj{T,U}(edges::Vector{Vector{SimpleDirectedWeightedEdge{T,U}}})`: Constructs a new `SimpleWeightedGraphAdj{T,U}` object with the given vertices and edges.
 
 """
 mutable struct SimpleDirectedWeightedGraphAdj{T<:Integer, U<:Real} <: AbstractGraph{T}
-    vertices::Vector{T}
     edges::Vector{Vector{SimpleDirectedWeightedEdge{T,U}}}
     edges_transpose::Vector{Vector{SimpleDirectedWeightedEdge{T,U}}}
     function SimpleDirectedWeightedGraphAdj{T,U}(
-        vertices::Vector{T},
         edges::Vector{Vector{SimpleDirectedWeightedEdge{T,U}}}
     ) where {T<:Integer, U<:Real}
-        isequal(length(vertices), length(edges)) || error("Edge vector does not have the same size as vertices vector")
-        for vertex in vertices
-            for edge in edges[vertex]
-                if !(edge.src ∈ vertices && edge.dst ∈ vertices)
-                    error("Edge source or destination is not in the vertices vector")
-                end
-            end
-        end
-        edges_transpose = [SimpleDirectedWeightedEdge{T,U}[] for _ in vertices]
-        for vertex in vertices
+        edges_transpose = [SimpleDirectedWeightedEdge{T,U}[] for _ in 1:length(edges)]
+        for vertex in 1:length(edges)
             for edge in edges[vertex]
                 push!(edges_transpose[edge.dst], SimpleDirectedWeightedEdge(edge.dst, edge.src, edge.weight))
             end
         end
-
-
-
-        new{T,U}(vertices, edges, edges_transpose)
+        new{T,U}(edges, edges_transpose)
     end
 end
 
 function Base.show(io::IO, graph::SimpleDirectedWeightedGraphAdj{T,U}) where {T<:Integer, U<:Real}
     println(io, "SimpleDirectedWeightedGraphAdj{", T, ", ", U, "}(")
-    print(io, "    vertices = ", graph.vertices, "\n")
     print(io, "    edges = [\n")
-    for vertex in graph.vertices
+    for vertex in 1:length(graph.edges)
         print(io, "        ")
         show(io, graph.edges[vertex])
         print(io, "\n")
@@ -83,13 +69,11 @@ function Base.show(io::IO, graph::SimpleDirectedWeightedGraphAdj{T,U}) where {T<
 end
 
 function SimpleDirectedWeightedGraphAdj(n::T, ::Type{U}) where {T<:Integer, U<:Real}
-    vertices = [i for i in 1:n]
-    edges::Vector{Vector{SimpleDirectedWeightedEdge{T,U}}} = [[] for _ in 1:n]
-    SimpleDirectedWeightedGraphAdj{T,U}(vertices, edges)
+    edges::Vector{Vector{SimpleDirectedWeightedEdge{T,U}}} = [SimpleDirectedWeightedEdge{T,U}[] for _ in 1:n]
+    SimpleDirectedWeightedGraphAdj{T,U}(edges)
 end
-function SimpleDirectedWeightedGraphAdj(n::T, edges::Vector{Vector{SimpleDirectedWeightedEdge{T,U}}}) where {T<:Integer, U<:Real}
-    vertices = [i for i in 1:n]
-    SimpleDirectedWeightedGraphAdj{T,U}(vertices, edges)
+function SimpleDirectedWeightedGraphAdj(edges::Vector{Vector{SimpleDirectedWeightedEdge{T,U}}}) where {T<:Integer, U<:Real}
+    SimpleDirectedWeightedGraphAdj{T,U}(edges)
 end
 
 function Graphs.add_edge!(graph::SimpleDirectedWeightedGraphAdj{T,U}, src::T, dst::T, weight::U) where {T<:Integer, U<:Real}
@@ -109,12 +93,22 @@ function Graphs.rem_edge!(graph::SimpleDirectedWeightedGraphAdj, src::T, dst::T)
     filter!(x -> x.dst ≠ src, graph.edges_transpose[dst])
 end
 
-Graphs.has_vertex(graph::SimpleDirectedWeightedGraphAdj, v::T) where {T<:Integer} = v ∈ graph.vertices
+Graphs.has_vertex(graph::SimpleDirectedWeightedGraphAdj, v::T) where {T<:Integer} = v ∈ 1:length(graph.edges)
 
-Graphs.add_vertex!(graph::SimpleDirectedWeightedGraphAdj, v::T) where {T<:Integer} = push!(graph.vertices, v)
+Graphs.add_vertex!(graph::SimpleDirectedWeightedGraphAdj{T,U}) where {T<:Integer, U<:Real} = begin
+    resize!(graph.edges, length(graph.edges) + 1)
+    resize!(graph.edges_transpose, length(graph.edges_transpose) + 1)
+    graph.edges[length(graph.edges)+1] = SimpleDirectedWeightedEdge{T,U}[]
+    graph.edges_transpose[length(graph.edges_transpose)+1] = SimpleDirectedWeightedEdge{T,U}[]
+end 
+
+inedges(graph::SimpleDirectedWeightedGraphAdj, v::T) where {T<:Integer} = graph.edges_transpose[v]
+outedges(graph::SimpleDirectedWeightedGraphAdj, v::T) where {T<:Integer} = graph.edges[v]
 
 Graphs.outneighbors(graph::SimpleDirectedWeightedGraphAdj, v::T) where {T<:Integer} = [edge.dst for edge in graph.edges[v]]
 Graphs.inneighbors(graph::SimpleDirectedWeightedGraphAdj, v::T) where {T<:Integer} = [edge.dst for edge in graph.edges_transpose[v]]
+
+Base.length(graph::SimpleDirectedWeightedGraphAdj) = length(graph.edges)
 
 function Base.getindex(graph::SimpleDirectedWeightedGraphAdj, i::Integer, j::Integer, ::Val{:weight})
     for edge in graph.edges[i]

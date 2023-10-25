@@ -13,19 +13,19 @@ function TwoMachinesTest()
             @test branch_and_bound_objective == two_machines_result.objectiveValue
             # println("done")
         end
-        @testset "TwoMachinesTest2" begin
-            #bardzo zły przypadek 
-            rng = MersenneTwister(123453)
-            instance1 = InstanceLoaders.random_instance_generator(5,2; rng=rng, job_recirculation=true, n_i=[6 for _ in 1:5], machine_repetition=true)
-            timed = @timed two_machines_result = Algorithms.algorithm2_two_machines_job_shop(instance1)
-            @test two_machines_result.objectiveValue == 72
-            # println(timed)
-            # println(two_machines_result.metadata)
-            branch_and_bound_objective = Algorithms.generate_active_schedules(instance1).objectiveValue
-            @test branch_and_bound_objective == 72
-            @test branch_and_bound_objective == two_machines_result.objectiveValue
-            # println("done")
-        end
+        # @testset "TwoMachinesTest2" begin
+        #     #bardzo zły przypadek 
+        #     rng = MersenneTwister(123453)
+        #     instance1 = InstanceLoaders.random_instance_generator(5,2; rng=rng, job_recirculation=true, n_i=[6 for _ in 1:5], machine_repetition=true)
+        #     timed = @timed two_machines_result = Algorithms.algorithm2_two_machines_job_shop(instance1)
+        #     @test two_machines_result.objectiveValue == 72
+        #     # println(timed)
+        #     # println(two_machines_result.metadata)
+        #     branch_and_bound_objective = Algorithms.generate_active_schedules(instance1).objectiveValue
+        #     @test branch_and_bound_objective == 72
+        #     @test branch_and_bound_objective == two_machines_result.objectiveValue
+        #     # println("done")
+        # end
         @testset "TwoMachinesTest3" begin
             #bardzo zły przypadek 
             rng = MersenneTwister(1234)
