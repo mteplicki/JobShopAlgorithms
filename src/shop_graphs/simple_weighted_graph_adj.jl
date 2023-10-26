@@ -105,8 +105,8 @@ end
 inedges(graph::SimpleDirectedWeightedGraphAdj, v::T) where {T<:Integer} = graph.edges_transpose[v]
 outedges(graph::SimpleDirectedWeightedGraphAdj, v::T) where {T<:Integer} = graph.edges[v]
 
-Graphs.outneighbors(graph::SimpleDirectedWeightedGraphAdj, v::T) where {T<:Integer} = [edge.dst for edge in graph.edges[v]]
-Graphs.inneighbors(graph::SimpleDirectedWeightedGraphAdj, v::T) where {T<:Integer} = [edge.dst for edge in graph.edges_transpose[v]]
+Graphs.outneighbors(graph::SimpleDirectedWeightedGraphAdj, v::T) where {T<:Integer} = (edge.dst for edge in graph.edges[v])
+Graphs.inneighbors(graph::SimpleDirectedWeightedGraphAdj, v::T) where {T<:Integer} = (edge.dst for edge in graph.edges_transpose[v])
 
 Base.length(graph::SimpleDirectedWeightedGraphAdj) = length(graph.edges)
 

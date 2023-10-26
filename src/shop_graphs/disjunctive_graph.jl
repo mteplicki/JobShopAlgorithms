@@ -58,12 +58,12 @@ function Base.show(io::IO, graph::DisjunctiveWeightedGraph{T,U}) where {T<:Integ
     print(io, ")")
 end
 
-Graphs.inneighbors(graph::DisjunctiveWeightedGraph{T,U}, v::T) where {T<:Integer, U<:Real} = [inneighbors(graph.conjunctiveGraph, v); inneighbors(graph.disjunctiveGraph, v)]
+Graphs.inneighbors(graph::DisjunctiveWeightedGraph{T,U}, v::T) where {T<:Integer, U<:Real} = Iterators.flatten((inneighbors(graph.conjunctiveGraph, v), inneighbors(graph.disjunctiveGraph, v)))
 
-Graphs.outneighbors(graph::DisjunctiveWeightedGraph{T,U}, v::T) where {T<:Integer, U<:Real} = [outneighbors(graph.conjunctiveGraph, v); outneighbors(graph.disjunctiveGraph, v)]
+Graphs.outneighbors(graph::DisjunctiveWeightedGraph{T,U}, v::T) where {T<:Integer, U<:Real} = Iterators.flatten((outneighbors(graph.conjunctiveGraph, v), outneighbors(graph.disjunctiveGraph, v)))
 
-Graphs.neighbors(graph::DisjunctiveWeightedGraph{T,U}, v::T) where {T<:Integer, U<:Real} = [neighbors(graph.conjunctiveGraph, v); neighbors(graph.disjunctiveGraph, v)]
+Graphs.neighbors(graph::DisjunctiveWeightedGraph{T,U}, v::T) where {T<:Integer, U<:Real} = Iterators.flatten((neighbors(graph.conjunctiveGraph, v), neighbors(graph.disjunctiveGraph, v)))
 
-inedges(graph::DisjunctiveWeightedGraph{T,U}, v::T) where {T<:Integer, U<:Real} = [inedges(graph.conjunctiveGraph, v); inedges(graph.disjunctiveGraph, v)]
+inedges(graph::DisjunctiveWeightedGraph{T,U}, v::T) where {T<:Integer, U<:Real} = Iterators.flatten((inedges(graph.conjunctiveGraph, v), inedges(graph.disjunctiveGraph, v)))
 
-outedges(graph::DisjunctiveWeightedGraph{T,U}, v::T) where {T<:Integer, U<:Real} = [outedges(graph.conjunctiveGraph, v); outedges(graph.disjunctiveGraph, v)]
+outedges(graph::DisjunctiveWeightedGraph{T,U}, v::T) where {T<:Integer, U<:Real} = Iterators.flatten((outedges(graph.conjunctiveGraph, v), outedges(graph.disjunctiveGraph, v)))

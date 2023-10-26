@@ -9,7 +9,6 @@ struct ShopError <: ShopResult
     algorithm::String
     date::DateTime
     metadata::Dict{String, Any}
-    objectiveFunction::ObjectiveFunction
     function ShopError(
         instance::AbstractShop,
         error::String,
@@ -18,7 +17,7 @@ struct ShopError <: ShopResult
         metadata::Dict{String, Any}=Dict{String, Any}(),
         date::DateTime=now()
     )
-        new(instance, objectiveFunction, error, algorithm, date, metadata)
+        new(instance, error, objectiveFunction, algorithm, date, metadata)
     end
 end
 

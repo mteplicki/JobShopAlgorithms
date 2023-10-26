@@ -9,13 +9,13 @@ function ShiftingBottleneckCarlierTest()
         ]
     @testset "ShiftingBottleneckDPCTests $filename" verbose = true for (filename, expectedValue, specification) in testsWithResults 
         value = Algorithms.shiftingbottleneckcarlier(open(x->read(x, specification), filename)).objectiveValue
-        println(filename, ": ", value)
+        # println(filename, ": ", value)
         @test value <= expectedValue
     end
 
     @testset "ShiftingBottleneckCarlierTests $filename" verbose = true for (filename, expectedValue, specification) in testsWithResults 
         value = Algorithms.shiftingbottleneckcarlier(open(x->read(x, specification), filename); with_dpc=false).objectiveValue
-        println(filename, ": ", value)
+        # println(filename, ": ", value)
         @test value <= expectedValue
     end
 
