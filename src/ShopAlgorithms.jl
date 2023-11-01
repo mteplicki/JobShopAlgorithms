@@ -22,5 +22,5 @@ module ShopAlgorithms
         result2 = Algorithms.branchandbound(instance)
         println(result2)
     end
-    test1()
+    # test1()
 end # module JobShopAlgorithms
