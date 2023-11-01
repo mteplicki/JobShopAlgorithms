@@ -1,10 +1,10 @@
-export generate_active_schedules_carlier
+export branchandbound_carlier
 
 
 
 
 """
-    generate_active_schedules_carlier(
+    branchandbound_carlier(
         instance::JobShopInstance;
         yielding::Bool = false,
         with_dpc::Bool = false,
@@ -22,7 +22,7 @@ Branch and Bound algorithm for the Job Shop Scheduling problem `J || Cmax` with 
 # Returns
 - `ShopSchedule`: A ShopSchedule object representing the solution to the job shop problem.
 """
-function generate_active_schedules_carlier(
+function branchandbound_carlier(
     instance::JobShopInstance;
     yielding::Bool = false,
     with_dpc::Bool = false,
@@ -43,7 +43,7 @@ function generate_active_schedules_carlier(
     node = ActiveScheduleNode(
         [(i, 1) for i = 1:n],
         nothing,
-        SimpleDirectedWeightedGraphAdj(sum(n_i) + 2, Int),
+        SimpleDiWeightedGraphAdj(sum(n_i) + 2, Int),
         Dict{Tuple{Int64,Int64},Bool}(),
         [[0 for _ in 1:a] for a in n_i]
     )

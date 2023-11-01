@@ -9,13 +9,13 @@ testsWithResults = [
     ]
 @testset "BranchAndBoundTest $filename" verbose = true for (filename, expectedValue, specification) in testsWithResults 
     # println(filename)
-    @test Algorithms.generate_active_schedules(open(x->read(x, specification), filename)).objectiveValue == expectedValue
+    @test Algorithms.branchandbound(open(x->read(x, specification), filename)).objectiveValue == expectedValue
     # println("done")
 end
 
 @testset "BranchAndBoundTestCarlier $filename" verbose = true for (filename, expectedValue, specification) in testsWithResults 
     # println(filename)
-    @test Algorithms.generate_active_schedules_carlier(open(x->read(x, specification), filename)).objectiveValue == expectedValue
+    @test Algorithms.branchandbound_carlier(open(x->read(x, specification), filename)).objectiveValue == expectedValue
     # println("done")
 end
 

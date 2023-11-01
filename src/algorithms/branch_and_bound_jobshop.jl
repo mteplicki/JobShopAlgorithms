@@ -1,10 +1,10 @@
-export generate_active_schedules
+export branchandbound
 
 
 
 
 """
-    generate_active_schedules(
+    branchandbound(
         instance::JobShopInstance;
         bounding_algorithm::Symbol=:no_pmtn,
         yielding::Bool=false
@@ -19,7 +19,7 @@ Branch and Bound algorithm for the Job Shop Scheduling problem `J | rcrc | Cmax`
 # Returns
 - `ShopSchedule`: A ShopSchedule object representing the solution to the job shop problem.
 """
-function generate_active_schedules(
+function branchandbound(
     instance::JobShopInstance;
     bounding_algorithm::Symbol=:no_pmtn,
     yielding::Bool = false
@@ -42,7 +42,7 @@ function generate_active_schedules(
     node = ActiveScheduleNode(
         [(i, 1) for i = 1:n],
         nothing,
-        SimpleDirectedWeightedGraphAdj(sum(n_i) + 2, Int),
+        SimpleDiWeightedGraphAdj(sum(n_i) + 2, Int),
         Dict{Tuple{Int64,Int64},Bool}(),
         [[0 for _ in 1:a] for a in n_i]
     )

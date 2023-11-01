@@ -36,34 +36,34 @@ DisjunctiveWeightedGraph is a mutable struct that represents a disjunctive weigh
 ```
 """
 mutable struct DisjunctiveWeightedGraph{T<:Integer, U<:Real} <: AbstractGraph{T}
-    conjunctiveGraph::SimpleDirectedWeightedGraphAdj{T,U}
-    disjunctiveGraph::SimpleDirectedWeightedGraphAdj{T,U}
+    conjunctiveEdges::SimpleDiWeightedGraphAdj{T,U}
+    selection::SimpleDiWeightedGraphAdj{T,U}
     function DisjunctiveWeightedGraph{T,U}(
-        conjunctiveGraph::SimpleDirectedWeightedGraphAdj{T,U},
-        disjunctiveGraph::SimpleDirectedWeightedGraphAdj{T,U}
+        conjunctiveEdges::SimpleDiWeightedGraphAdj{T,U},
+        selection::SimpleDiWeightedGraphAdj{T,U}
     ) where {T<:Integer, U<:Real}
-        length(conjunctiveGraph) == length(disjunctiveGraph) || throw(DimensionMismatch("conjunctiveGraph and disjunctiveGraph must have the same number of vertices"))
-        new{T,U}(conjunctiveGraph, disjunctiveGraph)
+        length(conjunctiveEdges) == length(conjunctiveEdges) || throw(DimensionMismatch("conjunctiveEdges and selection must have the same number of vertices"))
+        new{T,U}(conjunctiveEdges, selection)
     end
 end
 
-DisjunctiveWeightedGraph(conjunctiveGraph::SimpleDirectedWeightedGraphAdj{T,U}, disjunctiveGraph::SimpleDirectedWeightedGraphAdj{T,U}) where {T<:Integer, U<:Real} = DisjunctiveWeightedGraph{T,U}(conjunctiveGraph, disjunctiveGraph)
+DisjunctiveWeightedGraph(conjunctiveGraph::SimpleDiWeightedGraphAdj{T,U}, selection::SimpleDiWeightedGraphAdj{T,U}) where {T<:Integer, U<:Real} = DisjunctiveWeightedGraph{T,U}(conjunctiveGraph, selection)
 
-Base.length(graph::DisjunctiveWeightedGraph) = length(graph.conjunctiveGraph)
+Base.length(graph::DisjunctiveWeightedGraph) = length(graph.conjunctiveEdges)
 
 function Base.show(io::IO, graph::DisjunctiveWeightedGraph{T,U}) where {T<:Integer, U<:Real}
     println(io, "DisjunctiveWeightedGraph{", T, ", ", U, "}(")
-    println(io, "conjunctiveGraph = ", graph.conjunctiveGraph)
-    println(io, "disjunctiveGraph = ", graph.disjunctiveGraph)
+    println(io, "conjunctiveGraph = ", graph.conjunctiveEdges)
+    println(io, "disjunctiveGraph = ", graph.selection)
     print(io, ")")
 end
 
-Graphs.inneighbors(graph::DisjunctiveWeightedGraph{T,U}, v::T) where {T<:Integer, U<:Real} = Iterators.flatten((inneighbors(graph.conjunctiveGraph, v), inneighbors(graph.disjunctiveGraph, v)))
+Graphs.inneighbors(graph::DisjunctiveWeightedGraph{T,U}, v::T) where {T<:Integer, U<:Real} = Iterators.flatten((inneighbors(graph.conjunctiveEdges, v), inneighbors(graph.selection, v)))
 
-Graphs.outneighbors(graph::DisjunctiveWeightedGraph{T,U}, v::T) where {T<:Integer, U<:Real} = Iterators.flatten((outneighbors(graph.conjunctiveGraph, v), outneighbors(graph.disjunctiveGraph, v)))
+Graphs.outneighbors(graph::DisjunctiveWeightedGraph{T,U}, v::T) where {T<:Integer, U<:Real} = Iterators.flatten((outneighbors(graph.conjunctiveEdges, v), outneighbors(graph.selection, v)))
 
-Graphs.neighbors(graph::DisjunctiveWeightedGraph{T,U}, v::T) where {T<:Integer, U<:Real} = Iterators.flatten((neighbors(graph.conjunctiveGraph, v), neighbors(graph.disjunctiveGraph, v)))
+Graphs.neighbors(graph::DisjunctiveWeightedGraph{T,U}, v::T) where {T<:Integer, U<:Real} = Iterators.flatten((neighbors(graph.conjunctiveEdges, v), neighbors(graph.selection, v)))
 
-inedges(graph::DisjunctiveWeightedGraph{T,U}, v::T) where {T<:Integer, U<:Real} = Iterators.flatten((inedges(graph.conjunctiveGraph, v), inedges(graph.disjunctiveGraph, v)))
+inedges(graph::DisjunctiveWeightedGraph{T,U}, v::T) where {T<:Integer, U<:Real} = Iterators.flatten((inedges(graph.conjunctiveEdges, v), inedges(graph.selection, v)))
 
-outedges(graph::DisjunctiveWeightedGraph{T,U}, v::T) where {T<:Integer, U<:Real} = Iterators.flatten((outedges(graph.conjunctiveGraph, v), outedges(graph.disjunctiveGraph, v)))
+outedges(graph::DisjunctiveWeightedGraph{T,U}, v::T) where {T<:Integer, U<:Real} = Iterators.flatten((outedges(graph.conjunctiveEdges, v), outedges(graph.selection, v)))

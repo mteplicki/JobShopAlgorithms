@@ -30,17 +30,10 @@ function dag_paths(graph::AbstractGraph, source::V, type::Symbol; reversed=false
     visited = falses(length(graph))
     pathVis = falses(length(graph))
     stack = Stack{V}()
-    if reversed
-        for i in length(graph):-1:1
-            if !visited[i]
-                topological_sort_util(graph, visited, pathVis, stack, i, reversed)
-            end
-        end
-    else
-        for i in 1:length(graph)
-            if !visited[i]
-                topological_sort_util(graph, visited, pathVis, stack, i, reversed)
-            end
+    iteration_order = reversed ? (length(graph):-1:1) : (1:length(graph))
+    for i in iteration_order
+        if !visited[i]
+            topological_sort_util(graph, visited, pathVis, stack, i, reversed)
         end
     end
 

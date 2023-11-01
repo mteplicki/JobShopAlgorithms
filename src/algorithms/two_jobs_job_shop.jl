@@ -79,11 +79,11 @@ function two_jobs_job_shop(
     job_equals(2)(instance) || throw(ArgumentError("n must be equal to 2"))
     additionalInformation = Dict{String, Any}()
     yield_ref = yielding ? Ref(time()) : nothing
-    points, obstacles, size = createpoints(n_i, p, μ)
+    points, obstacles = createpoints(n_i, p, μ)
     try_yield(yield_ref)
     network, ONumber = createnetwork(points, obstacles, yield_ref)
     d = OffsetArray([Int64(typemax(Int32)) for _ in 1:(length(points))], -1)
-    previous::Vector{Union{Nothing, Int}} = [nothing for _ in 1:(length(points)-1)]
+    previous = Vector{Int}(undef, length(points)-1)
     
     d[ONumber] = 0
     for node in network
@@ -142,7 +142,7 @@ function createpoints(
     end
     Fpoint = Point(Coordinate(size[1], size[2]), typemax(Int), length(points), F)
     push!(points, Fpoint)
-    return points, obstacles, size
+    return points, obstacles
 end
 
 function distance(point1::Point, point2::Point)
@@ -194,7 +194,7 @@ function reconstructpath(
     p::Vector{Vector{Int}},
     obstacles::Vector{Obstacle},
     points::OffsetVector{Point},
-    previous::Vector{Union{Nothing, Int}}
+    previous::Vector{Int}
 )
     FNumber = length(points) - 1
     path = Vector{Int64}()

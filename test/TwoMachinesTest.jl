@@ -8,7 +8,7 @@ function TwoMachinesTest()
             @test two_machines_result.objectiveValue == 90
             # println(timed)
             # println(two_machines_result.metadata)
-            branch_and_bound_objective = Algorithms.generate_active_schedules(instance1).objectiveValue
+            branch_and_bound_objective = Algorithms.branchandbound(instance1).objectiveValue
             @test branch_and_bound_objective == 90
             @test branch_and_bound_objective == two_machines_result.objectiveValue
             # println("done")
@@ -33,7 +33,7 @@ function TwoMachinesTest()
             timed = @timed two_machines_result = Algorithms.algorithm2_two_machines_job_shop(instance1)
             # println(timed)
             # println(two_machines_result.metadata)
-            branch_and_bound_objective = Algorithms.generate_active_schedules(instance1).objectiveValue
+            branch_and_bound_objective = Algorithms.branchandbound(instance1).objectiveValue
             @test branch_and_bound_objective == two_machines_result.objectiveValue
             # println("done")
         end

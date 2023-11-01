@@ -1,7 +1,7 @@
 import Graphs.add_edge!
 
 export YIELD_TIME
-YIELD_TIME = 0.5
+const YIELD_TIME = 0.5
 
 Base.sizehint!(queue::PriorityQueue{K,V}) where {K,V} = begin 
     sizehint!(queue.xs)
@@ -180,7 +180,7 @@ end
 Returns a graph with only conjuctive edges
 """
 function generate_conjuctive_graph(n::Int, n_i::Vector{Int}, p::Vector{Vector{Int}}, jobToGraphNode::Vector{Vector{Int}})
-    graph = SimpleDirectedWeightedGraphAdj(sum(n_i)+2, Int)
+    graph = SimpleDiWeightedGraphAdj(sum(n_i)+2, Int)
     for i in 1:n
         add_edge!(graph, 1, jobToGraphNode[i][1], 0)
         for j in 1:(n_i[i] - 1)
