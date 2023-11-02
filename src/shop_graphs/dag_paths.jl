@@ -2,12 +2,12 @@ export dag_paths, topological_sort_util
 using ..ShopAlgorithms
 
 """
-    dag_paths(graph::Graph, source::V, type::Symbol) where {V<:Integer, U<:Real}
+    dag_paths(graph::AbstractGraph, source::V, type::Symbol) where {V<:Integer, U<:Real}
 
 Returns all paths from the source vertex to all other vertices in a directed acyclic graph (DAG).
 
 # Arguments
-- `graph::Graph`: A directed acyclic graph.
+- `graph::AbstractGraph`: A directed acyclic graph.
 - `source::V`: The source vertex.
 - `type::Symbol`: The type of path to return. Possible values are `:shortest` and `:longest`.
 - `reversed::Bool`: Whether to use the reversed graph.
@@ -55,12 +55,12 @@ function dag_paths(graph::AbstractGraph, source::V, type::Symbol; reversed=false
 end
 
 """
-    topological_sort_util(graph::Graph, visited::BitVector, pathVis::BitVector, stack::Stack{V}, v::V) where {V<:Integer, U<:Real}
+    topological_sort_util(graph::AbstractGraph, visited::BitVector, pathVis::BitVector, stack::Stack{V}, v::V) where {V<:Integer, U<:Real}
 
 A utility function used in topological sorting of a directed acyclic graph (DAG). This function recursively visits all the vertices adjacent to the given vertex `v` and adds them to the stack in topological order. It also detects cycles in the graph by keeping track of the visited vertices and the vertices in the current path.
 
 # Arguments
-- `graph::Graph`: The directed acyclic graph to be sorted.
+- `graph::AbstractGraph`: The directed acyclic graph to be sorted.
 - `visited::BitVector`: A bit vector to keep track of the visited vertices.
 - `pathVis::BitVector`: A bit vector to keep track of the vertices in the current path.
 - `stack::Stack{V}`: A stack to store the vertices in topological order.

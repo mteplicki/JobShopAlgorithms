@@ -51,52 +51,63 @@ function generate_release_times(graph::AbstractGraph, n_i::Vector{Int}, graphNod
     return r, rGraph
 end
 
+function generate_paths_sink(graph::AbstractGraph, n_i::Vector{Int}, graphNodeToJob::Vector{Tuple{Int,Int}})
+    qGraph = dag_paths(graph, sum(n_i) + 2, :longest; reversed = true)
+    q = [[0 for _ in 1:a] for a in n_i]
+    for (index, value) in enumerate(qGraph)
+        if index == 1 || index == sum(n_i)+2 
+            continue
+        end
+        i, j = graphNodeToJob[index]
+        q[i][j] = value 
+    end 
+    return q, qGraph
+end
+
 """
     Generate a sequence of jobs on a given machine, with a 1|r_j|Lmax criterion
 """
-function generate_sequence(instance::JobShopInstance, r::Vector{Vector{Int}}, machineJobs::Vector{Vector{Tuple{Int,Int}}}, jobToGraphNode::Vector{Vector{Int}}, graph::AbstractGraph, Cmax::Int64, i::Int, yield_ref)
+function generate_sequence(instance::JobShopInstance, r::Vector{Vector{Int}}, paths_from_sink::Vector{Vector{Int}}, machineJobs::Vector{Vector{Tuple{Int,Int}}}, Cmax::Int64, i::Int, yield_ref)
     if length(machineJobs[i]) == 0
         throw(DimensionMismatch("Machine $i has no jobs assigned"))
     end
     p, n_i = instance.p, instance.n_i
-    d = dag_paths(graph, sum(n_i) + 2, :longest; reversed = true)
+    
     newP = Int64[p[job[1]][job[2]] for job in machineJobs[i]]
     newR = Int64[r[job[1]][job[2]] for job in machineJobs[i]]
-    newD = Int64[Cmax + p[job[1]][job[2]] - d[jobToGraphNode[job[1]][job[2]]] for job in machineJobs[i]]
+    newD = Int64[Cmax + p[job[1]][job[2]] - paths_from_sink[job[1]][job[2]] for job in machineJobs[i]]
     Lmax, sequence, microruns = single_machine_release_LMax(newP,newR,newD, yield_ref)
     try_yield(yield_ref)
     return Lmax, map(x -> machineJobs[i][x], sequence), microruns
 end
 
-function generate_sequence_carlier(instance::JobShopInstance, r::Vector{Vector{Int}}, machineJobs::Vector{Vector{Tuple{Int,Int}}}, jobToGraphNode::Vector{Vector{Int}}, graph::AbstractGraph, i::Int, yield_ref; with_priority_queue::Bool = true, carlier_timeout::Union{Nothing,Float64} = nothing)
+function generate_sequence_carlier(instance::JobShopInstance, r::Vector{Vector{Int}}, paths_from_sink::Vector{Vector{Int}}, machineJobs::Vector{Vector{Tuple{Int,Int}}}, i::Int, yield_ref; with_priority_queue::Bool = true, carlier_timeout::Union{Nothing,Float64} = nothing)
     if length(machineJobs[i]) == 0
         throw(DimensionMismatch("Machine $i has no jobs assigned"))
     end
     p, n_i = instance.p, instance.n_i
-    d = dag_paths(graph, sum(n_i) + 2, :longest; reversed = true)
     newP = Int64[p[job[1]][job[2]] for job in machineJobs[i]]
     newR = Int64[r[job[1]][job[2]] for job in machineJobs[i]]
-    newQ = Int64[d[jobToGraphNode[job[1]][job[2]]] - p[job[1]][job[2]] for job in machineJobs[i]]
+    newQ = Int64[paths_from_sink[job[1]][job[2]]- p[job[1]][job[2]] for job in machineJobs[i]]
     Cmax, sequence, microruns = carlier(newP,newR,newQ, yield_ref; with_priority_queue = with_priority_queue, carlier_timeout =carlier_timeout)
     try_yield(yield_ref)
     return Cmax, map(x -> machineJobs[i][x], sequence), microruns
 end
 
-function generate_sequence_pmtn(instance::JobShopInstance, r::Vector{Vector{Int}}, machineJobs::Vector{Vector{Tuple{Int,Int}}}, jobToGraphNode::Vector{Vector{Int}}, graph::AbstractGraph, Cmax::Int, i::Int, yield_ref)
+function generate_sequence_pmtn(instance::JobShopInstance, r::Vector{Vector{Int}}, paths_from_sink::Vector{Vector{Int}}, machineJobs::Vector{Vector{Tuple{Int,Int}}}, Cmax::Int, i::Int, yield_ref)
     if length(machineJobs[i]) == 0
         throw(DimensionMismatch("Machine $i has no jobs assigned"))
     end
     p, n_i = instance.p, instance.n_i
-    d = dag_paths(graph, sum(n_i) + 2, :longest; reversed = true)
+    # d = dag_paths(graph, sum(n_i) + 2, :longest; reversed = true)
     newP = [p[job[1]][job[2]] for job in machineJobs[i]]
     newR = [r[job[1]][job[2]] for job in machineJobs[i]]
-    newD = [Cmax + p[job[1]][job[2]] - d[jobToGraphNode[job[1]][job[2]]] for job in machineJobs[i]]
+    newD = [Cmax + p[job[1]][job[2]] - paths_from_sink[job[1]][job[2]] for job in machineJobs[i]]
     jobs = [JobData(newP[j], newR[j], newD[j], j, nothing) for j in 1:length(newP)]
     Lmax, _  = single_machine_release_LMax_pmtn(jobs, JobData[])
     try_yield(yield_ref)
     return Lmax, 1
 end
-
 
 function generate_sequence_dpc(instance:: JobShopInstance, r::Vector{Vector{Int}}, machineJobs::Vector{Vector{Tuple{Int,Int}}}, jobToGraphNode::Vector{Vector{Int}}, graph::AbstractGraph, i::Int, yield_ref; with_priority_queue::Bool = true, carlier_timeout::Union{Nothing,Float64} = nothing)
     if length(machineJobs[i]) == 0

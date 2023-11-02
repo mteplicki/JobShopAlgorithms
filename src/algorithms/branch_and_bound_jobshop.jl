@@ -99,7 +99,9 @@ function branchandbound(
             end
             disjunctiveGraph = DisjunctiveWeightedGraph(conjuctiveGraph, newNode.graph)
             newNode.r, rGraph = generate_release_times(disjunctiveGraph, n_i, graphNodeToJob)
+            path_from_sink = generate_paths_sink(disjunctiveGraph, n_i, graphNodeToJob)[1]
             longestPathLowerBound = rGraph[sum(n_i)+2]
+            
             # obliczamy dolną granicę dla tego węzła, obliczając najdłuższą ścieżkę w grafie z źródła do ujścia
             newNode.lowerBound = max(newNode.lowerBound, longestPathLowerBound)
             lowerBoundCandidate = newNode.lowerBound
@@ -109,10 +111,10 @@ function branchandbound(
             for machineNumber in 1:m
                 try
                     if bounding_algorithm == :pmtn
-                        LmaxCandidate, _ = generate_sequence_pmtn(instance, newNode.r, machineJobs, jobToGraphNode, disjunctiveGraph, newNode.lowerBound, machineNumber, yield_ref)
+                        LmaxCandidate, _ = generate_sequence_pmtn(instance, newNode.r, path_from_sink, machineJobs, newNode.lowerBound, machineNumber, yield_ref)
                         microruns += 1
                     else
-                        LmaxCandidate, _, new_microruns = generate_sequence(instance, newNode.r, machineJobs, jobToGraphNode, disjunctiveGraph, newNode.lowerBound, machineNumber, yield_ref)
+                        LmaxCandidate, _, new_microruns = generate_sequence(instance, newNode.r, path_from_sink, machineJobs, newNode.lowerBound, machineNumber, yield_ref)
                         microruns += new_microruns
                     end
                     lowerBoundCandidate = max(newNode.lowerBound + LmaxCandidate, lowerBoundCandidate)

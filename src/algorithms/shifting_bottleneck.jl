@@ -1,8 +1,12 @@
 export shiftingbottleneck
 
 """
-    shiftingbottleneck(instance::JobShopInstance; suppress_warnings::Bool = false, yielding::Bool=false)
-
+    shiftingbottleneck(
+        instance::JobShopInstance;
+        suppress_warnings::Bool = false,
+        yielding::Bool = false,
+        machine_improving::Bool = true
+    )
 Solves the job shop scheduling `J || Cmax` problem with no job recirculation using the Shifting Bottleneck algorithm. The solution of the problem 
 is not guaranteed to be optimal. Also, not every instance of the problem can be solved using this algorithm.
 
@@ -10,6 +14,7 @@ is not guaranteed to be optimal. Also, not every instance of the problem can be 
 - `instance::JobShopInstance`: An instance of the job shop scheduling problem.
 - `suppress_warnings`: If `true`, warnings will not be printed.
 - `yielding::Bool=false`: If `true`, the algorithm will yield after each iteration. This is useful for timeouting the algorithm.
+- `machine_improving::Bool=true`: If `true`, the algorithm will try to improve the solution by fixing the disjunctive edges for each machine.
 
 # Returns
 - `ShopSchedule <: ShopResult`: A ShopSchedule object representing the solution to the job shop problem.
@@ -18,7 +23,8 @@ is not guaranteed to be optimal. Also, not every instance of the problem can be 
 function shiftingbottleneck(
     instance::JobShopInstance;
     suppress_warnings::Bool = false,
-    yielding::Bool = false
+    yielding::Bool = false,
+    machine_improving::Bool = true
 )
     _ , timeSeconds, bytes = @timed begin 
     n, m, n_i, p, μ = instance.n, instance.m, instance.n_i, instance.p, instance.μ
@@ -35,6 +41,7 @@ function shiftingbottleneck(
     graph = generate_conjuctive_graph(n, n_i, p, jobToGraphNode)
 
     r, rGraph = generate_release_times(graph, n_i, graphNodeToJob)       
+    paths_from_sink, _ = generate_paths_sink(graph, n_i, graphNodeToJob)
     Cmax = rGraph[sum(n_i)+2]
     # M_0 - zbiór maszyn, dla których ustalono już krawędzie disjunktywne
     M_0 = Set{Int}()
@@ -51,7 +58,7 @@ function shiftingbottleneck(
         # wybierz tę, dla której algorytm 1 | r_j | Lmax wskaże najdłuższy czas wykonania (Bottleneck)
         for i in setdiff(M, M_0)
             try 
-                LmaxCandidate, sequenceCandidate, add_microruns = generate_sequence(instance, r, machineJobs, jobToGraphNode, graph, Cmax, i, yield_ref)     
+                LmaxCandidate, sequenceCandidate, add_microruns = generate_sequence(instance, r, paths_from_sink, machineJobs, Cmax, i, yield_ref)     
                 microruns += add_microruns
                 if LmaxCandidate >= Lmax
                     Lmax = LmaxCandidate
@@ -77,15 +84,16 @@ function shiftingbottleneck(
         fix_disjunctive_edges(sequence, jobToGraphNode, graph, p, k, machineFixedEdges)
         # dla każdej maszyny, dla której ustalono już krawędzi disjunktywne
         # sprawdź, czy można lepiej je ustawić i zmniejszyć Cmax
-        for fixMachine in setdiff(M_0, Set([k]))
+        for fixMachine in (machine_improving ? setdiff(M_0, Set([k])) : [])
             backUpGraph = deepcopy(graph)
             for (job1, job2) in machineFixedEdges[fixMachine]
                 rem_edge!(graph, job1, job2)
             end
             try
                 r, rGraph = generate_release_times(graph, n_i, graphNodeToJob)
+                paths_from_sink, _ = generate_paths_sink(graph, n_i, graphNodeToJob)
                 longestPath = rGraph[sum(n_i)+2]
-                LmaxCandidate, sequenceCandidate, add_microruns = generate_sequence(instance, r, machineJobs, jobToGraphNode, graph, Cmax, fixMachine, yield_ref)
+                LmaxCandidate, sequenceCandidate, add_microruns = generate_sequence(instance, r, paths_from_sink, machineJobs, Cmax, fixMachine, yield_ref)
                 microruns += add_microruns
                 if LmaxCandidate + longestPath >= Cmax
                     graph = backUpGraph

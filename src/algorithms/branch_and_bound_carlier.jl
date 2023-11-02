@@ -109,6 +109,11 @@ function branchandbound_carlier(
             end
             disjunctiveGraph = DisjunctiveWeightedGraph(conjuctiveGraph, newNode.graph)
             newNode.r, rGraph = generate_release_times(disjunctiveGraph, n_i, graphNodeToJob)
+            path_from_sink = if with_dpc
+                nothing
+            else
+                generate_paths_sink(disjunctiveGraph, n_i, graphNodeToJob)[1]
+            end
             longestPathLowerBound = rGraph[sum(n_i)+2]
             # obliczamy dolną granicę dla tego węzła, obliczając najdłuższą ścieżkę w grafie z źródła do ujścia
             newNode.lowerBound = max(newNode.lowerBound, longestPathLowerBound)
@@ -122,7 +127,7 @@ function branchandbound_carlier(
                         CmaxCandidate, _, new_microruns = generate_sequence_dpc(instance, newNode.r, machineJobs, jobToGraphNode, disjunctiveGraph, machineNumber, yield_ref; with_priority_queue = with_priority_queue)
                         microruns += new_microruns
                     else
-                        CmaxCandidate, _, new_microruns = generate_sequence_carlier(instance, newNode.r, machineJobs, jobToGraphNode, disjunctiveGraph, machineNumber, yield_ref; with_priority_queue = with_priority_queue)
+                        CmaxCandidate, _, new_microruns = generate_sequence_carlier(instance, newNode.r, path_from_sink, machineJobs, machineNumber, yield_ref; with_priority_queue = with_priority_queue)
                         microruns += new_microruns
                     end
                     lowerBoundCandidate = max(CmaxCandidate, lowerBoundCandidate)
