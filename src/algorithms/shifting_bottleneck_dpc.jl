@@ -9,7 +9,8 @@ export shiftingbottleneckcarlier
         with_priority_queue::Bool = true,
         with_dpc::Bool = true, 
         carlier_timeout::Union{Nothing,Float64} = nothing, 
-        machine_improving::Bool = true
+        machine_improving::Bool = true,
+        carlier_depth::Int64=typemax(Int64)
         )
 Solves the job shop scheduling `J || Cmax` problem with recirculation allowed using the Shifting Bottleneck algorithm with
 Carlier algorithm. The solution of the problem is not guaranteed to be optimal.
@@ -21,7 +22,7 @@ Carlier algorithm. The solution of the problem is not guaranteed to be optimal.
 - `with_priority_queue::Bool=true`: If `true`, the algorithm will use a priority queue to find the longest path in Carlier algorithm. Otherwise, it will use a simple stack.
 - `carlier_timeout::Union{Nothing,Float64}=nothing`: If not `nothing`, the inner Carlier algorithm will be timeouted after `carlier_timeout` seconds.
 - `machine_improving::Bool=true`: If `true`, the algorithm will try to improve the solution by fixing the disjunctive edges for each machine.
-
+- `carlier_depth::Int64=typemax(Int64)`: If not `typemax(Int64)`, the inner Carlier algorithm finding artificial paths will be limited to `carlier_depth` depth from the real path.
 
 # Returns
 - `ShopSchedule <: ShopResult`: A ShopSchedule object representing the solution to the job shop problem. The solution is not guaranteed to be optimal.
@@ -32,13 +33,16 @@ function shiftingbottleneckcarlier(
     with_priority_queue::Bool = true,
     with_dpc::Bool = true, 
     carlier_timeout::Union{Nothing,Float64} = nothing, 
-    machine_improving::Bool = true
+    machine_improving::Bool = true,
+    carlier_depth::Int64=typemax(Int64)
     )
-    algorithmName = "Shifting Bottleneck" * (with_dpc ? " - DPC" : " - Carlier") * (with_priority_queue ? "" : " with stack") * (carlier_timeout === nothing ? "" : " with timeout $(carlier_timeout)")
+    algorithmName = "Shifting Bottleneck" * (with_dpc ? " - DPC" : " - Carlier") * (with_priority_queue ? "" : " with stack") * (carlier_timeout === nothing ? "" : " with timeout $(carlier_timeout)") * (machine_improving ? "" : " without machine improving") * (carlier_depth == typemax(Int64) ? "" : " with depth $(carlier_depth)")
     _ , timeSeconds, bytes = @timed begin 
     n, m, n_i, p, μ = instance.n, instance.m, instance.n_i, instance.p, instance.μ
     microruns = 0
     yield_ref = yielding ? Ref(time()) : nothing
+    carlier_depth >= 0 || throw(ArgumentError("carlier_depth must be non-negative"))
+    carlier_timeout === nothing || carlier_timeout >= 0 || throw(ArgumentError("carlier_timeout must be non-negative"))
     # generujemy pomocnicze tablice
     jobToGraphNode, graphNodeToJob, machineJobs, machineWithJobs = generate_util_arrays(n, m, n_i, μ)
     # zbiór krawędzi disjunktywnych, które zostały już ustalone dla maszyny `i`
@@ -57,6 +61,7 @@ function shiftingbottleneckcarlier(
     # M - zbiór maszyn
     M = Set{Int}([i for i in 1:m])
     Cmax = rGraph[sum(n_i)+2]
+    metadata = Dict{String,Any}()
 
     while M_0 ≠ M
         Cmax = typemin(Int64)
@@ -69,7 +74,7 @@ function shiftingbottleneckcarlier(
             try_yield(yield_ref)
             try
                 CmaxCandidate, sequenceCandidate, add_microruns = if with_dpc
-                    generate_sequence_dpc(instance, r, machineJobs, jobToGraphNode, graph, i, yield_ref; with_priority_queue = with_priority_queue, carlier_timeout = carlier_timeout)
+                    generate_sequence_dpc(instance, r, machineJobs, jobToGraphNode, graph, i, yield_ref; with_priority_queue = with_priority_queue, carlier_timeout = carlier_timeout, carlier_depth = carlier_depth, metadata = metadata)
                 else
                     generate_sequence_carlier(instance, r, paths_from_sink, machineJobs, i, yield_ref; with_priority_queue = with_priority_queue, carlier_timeout = carlier_timeout)
                 end
@@ -94,7 +99,7 @@ function shiftingbottleneckcarlier(
             continue
         end
         M_0 = M_0 ∪ k
-        fix_disjunctive_edges(sequence, jobToGraphNode, graph, p, k, machineFixedEdges)
+        fix_disjunctive_edges!(sequence, jobToGraphNode, graph, p, k, machineFixedEdges)
         # dla każdej maszyny, dla której ustalono już krawędzi disjunktywne
         # sprawdź, czy można lepiej je ustawić i zmniejszyć Cmax
         # jeśli machine_improving == false, to nie sprawdzamy poprawy dla maszyn, dla których ustalono już krawędzie disjunktywne
@@ -114,7 +119,7 @@ function shiftingbottleneckcarlier(
 
                 longestPath = rGraph[sum(n_i)+2]
                 CmaxCandidate, sequenceCandidate, add_microruns = if with_dpc
-                    generate_sequence_dpc(instance, r, machineJobs, jobToGraphNode, graph, fixMachine, yield_ref; with_priority_queue = with_priority_queue, carlier_timeout = carlier_timeout)
+                    generate_sequence_dpc(instance, r, machineJobs, jobToGraphNode, graph, fixMachine, yield_ref; with_priority_queue = with_priority_queue, carlier_timeout = carlier_timeout, carlier_depth = carlier_depth, metadata = metadata)
                 else
                     generate_sequence_carlier(instance, r, paths_from_sink, machineJobs, fixMachine, yield_ref; with_priority_queue = with_priority_queue, carlier_timeout = carlier_timeout)
                 end
@@ -124,7 +129,7 @@ function shiftingbottleneckcarlier(
                 else
                     empty!(machineFixedEdges[fixMachine])
                     Cmax = CmaxCandidate
-                    fix_disjunctive_edges(sequenceCandidate, jobToGraphNode, graph, p, fixMachine, machineFixedEdges)
+                    fix_disjunctive_edges!(sequenceCandidate, jobToGraphNode, graph, p, fixMachine, machineFixedEdges)
                 end
             catch error
                 if isa(error, ArgumentError)
@@ -156,7 +161,8 @@ function shiftingbottleneckcarlier(
         algorithm = algorithmName,
         memoryBytes = bytes,
         timeSeconds = timeSeconds,
-        microruns = microruns
+        microruns = microruns,
+        metadata = metadata
     )
 end
 

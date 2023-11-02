@@ -81,7 +81,7 @@ function shiftingbottleneck(
         end
         M_0 = M_0 ∪ k
         Cmax += Lmax
-        fix_disjunctive_edges(sequence, jobToGraphNode, graph, p, k, machineFixedEdges)
+        fix_disjunctive_edges!(sequence, jobToGraphNode, graph, p, k, machineFixedEdges)
         # dla każdej maszyny, dla której ustalono już krawędzi disjunktywne
         # sprawdź, czy można lepiej je ustawić i zmniejszyć Cmax
         for fixMachine in (machine_improving ? setdiff(M_0, Set([k])) : [])
@@ -100,7 +100,7 @@ function shiftingbottleneck(
                 else
                     empty!(machineFixedEdges[fixMachine])
                     Cmax = LmaxCandidate + longestPath
-                    fix_disjunctive_edges(sequenceCandidate, jobToGraphNode, graph, p, fixMachine, machineFixedEdges)
+                    fix_disjunctive_edges!(sequenceCandidate, jobToGraphNode, graph, p, fixMachine, machineFixedEdges)
                 end
             catch error
                 if isa(error, ArgumentError)

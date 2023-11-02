@@ -1,7 +1,7 @@
 import Graphs.add_edge!
 
 export YIELD_TIME
-const YIELD_TIME = 0.5
+const YIELD_TIME = 1.
 
 Base.sizehint!(queue::PriorityQueue{K,V}) where {K,V} = begin 
     sizehint!(queue.xs)
@@ -109,7 +109,7 @@ function generate_sequence_pmtn(instance::JobShopInstance, r::Vector{Vector{Int}
     return Lmax, 1
 end
 
-function generate_sequence_dpc(instance:: JobShopInstance, r::Vector{Vector{Int}}, machineJobs::Vector{Vector{Tuple{Int,Int}}}, jobToGraphNode::Vector{Vector{Int}}, graph::AbstractGraph, i::Int, yield_ref; with_priority_queue::Bool = true, carlier_timeout::Union{Nothing,Float64} = nothing)
+function generate_sequence_dpc(instance:: JobShopInstance, r::Vector{Vector{Int}}, machineJobs::Vector{Vector{Tuple{Int,Int}}}, jobToGraphNode::Vector{Vector{Int}}, graph::AbstractGraph, i::Int, yield_ref; with_priority_queue::Bool = true, carlier_timeout::Union{Nothing,Float64} = nothing, carlier_depth::Int64 = typemax(Int64), metadata::Dict{String,Any} = Dict{String,Any}())
     if length(machineJobs[i]) == 0
         throw(DimensionMismatch("Machine $i has no jobs assigned"))
     end
@@ -125,7 +125,7 @@ function generate_sequence_dpc(instance:: JobShopInstance, r::Vector{Vector{Int}
             newDelay[a, b] = d[jobToGraphNode[job2[1]][job2[2]]]
         end
     end
-    Cmax, sequence, microruns = carlier_dpc(newP, newR, newQ, newDelay, yield_ref; with_priority_queue = with_priority_queue, carlier_timeout =carlier_timeout)
+    Cmax, sequence, microruns = carlier_dpc(newP, newR, newQ, newDelay, yield_ref; with_priority_queue = with_priority_queue, carlier_timeout =carlier_timeout, carlier_depth = carlier_depth, metadata = metadata)
     return Cmax, map(x -> machineJobs[i][x], sequence), microruns
 end
 
@@ -149,7 +149,7 @@ end
 """
     Fix a disjunctive edges with a given sequence of jobs on a given machine
 """
-function fix_disjunctive_edges(sequence::Vector{Tuple{Int,Int}}, jobToGraphNode::Vector{Vector{Int}}, graph::AbstractGraph, p::Vector{Vector{Int}}, machine::Int64, machineFixedEdges::Vector{Vector{Tuple{Int,Int}}})
+function fix_disjunctive_edges!(sequence::Vector{Tuple{Int,Int}}, jobToGraphNode::Vector{Vector{Int}}, graph::AbstractGraph, p::Vector{Vector{Int}}, machine::Int64, machineFixedEdges::Vector{Vector{Tuple{Int,Int}}})
     for (job1, job2) in Iterators.zip(sequence, Iterators.drop(sequence, 1))
         i1, j1 = job1[1], job1[2]
         i2, j2 = job2[1], job2[2]

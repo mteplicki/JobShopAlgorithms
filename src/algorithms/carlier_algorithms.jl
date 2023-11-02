@@ -126,7 +126,7 @@ end
 """
 Schrage algorithm is a heuristic algorithm used in Carlier modified branch and bound algorithm.
 """
-function schrage_dpc(p::Vector{Int}, r::Vector{Int}, q::Vector{Int}, delay::Matrix{Int})
+function schrage_dpc(p::Vector{Int}, r::Vector{Int}, q::Vector{Int}, delay::Matrix{Int}; carlier_depth::Int = typemax(Int))
     size(p,1) == size(r,1) == size(q,1) == size(delay, 1) == size(delay, 2) || throw(ArgumentError("p, r, q and delay must have the same size"))
     r_prim = copy(r)
     n = length(p)
@@ -172,17 +172,17 @@ function schrage_dpc(p::Vector{Int}, r::Vector{Int}, q::Vector{Int}, delay::Matr
             t = minimum(job -> r_prim[job], otherJobs; init=typemax(Int))
         end
     end
-    real_paths, artificial_paths = reconstruct_paths_schrage(n, criticalJobs, artificialCriticalJobs)
+    real_paths, artificial_paths = reconstruct_paths_schrage(n, criticalJobs, artificialCriticalJobs; carlier_depth=carlier_depth)
     return SchrageResult(U, S, real_paths, artificial_paths, S[n+1], r_prim)
 end
 
-function reconstruct_paths_schrage(n, criticalJobs, artificialCriticalJobs)
-    real_paths = Set{Path}()
+function reconstruct_paths_schrage(n, criticalJobs, artificialCriticalJobs; carlier_depth=typemax(Int))
+    real_paths = Vector{Path}()
     real_paths_candidates = Deque{Vector{Int}}()
     real_path_candidates_constructed = Set{Vector{Int}}()
 
-    artificial_paths = Set{Path}()
-    artificial_paths_candidates = Deque{Vector{Int}}()
+    artificial_paths = Vector{Path}()
+    artificial_paths_candidates = Deque{NamedTuple}()
     artificial_path_candidates_constructed = Set{Vector{Int}}()
     push!(real_paths_candidates, [n+1])
     while !isempty(real_paths_candidates)
@@ -199,33 +199,35 @@ function reconstruct_paths_schrage(n, criticalJobs, artificialCriticalJobs)
             end
         end
         for job in artificialCriticalJobs[path[1]]
-            if [job] ∉ artificial_path_candidates_constructed
-                pushfirst!(artificial_paths_candidates, [job])
-                push!(artificial_path_candidates_constructed, [job])
+            artificialPath = (path = [job], depth = 1)
+            if [job] ∉ artificial_path_candidates_constructed && artificialPath.depth <= carlier_depth
+                pushfirst!(artificial_paths_candidates, artificialPath)
+                push!(artificial_path_candidates_constructed, artificialPath.path)
             end
         end
     end
     while !isempty(artificial_paths_candidates)
-        path = pop!(artificial_paths_candidates)
-        if criticalJobs[path[1]] == []
-            push!(artificial_paths, Path(path, :artificial))
+        artificialPath = pop!(artificial_paths_candidates)
+        if criticalJobs[artificialPath.path[1]] == []
+            push!(artificial_paths, Path(artificialPath.path, :artificial))
         else
-            for job in criticalJobs[path[1]]
-                newpath = [job; path]
+            for job in criticalJobs[artificialPath.path[1]]
+                newpath = (path = [job; artificialPath.path], depth = artificialPath.depth)
                 if newpath ∉ artificial_path_candidates_constructed
                     pushfirst!(artificial_paths_candidates, newpath)
-                    push!(artificial_path_candidates_constructed, newpath)
+                    push!(artificial_path_candidates_constructed, newpath.path)
                 end
             end
         end
-        for job in artificialCriticalJobs[path[1]]
-            if [job] ∉ artificial_path_candidates_constructed 
-                pushfirst!(artificial_paths_candidates, [job])
-                push!(artificial_path_candidates_constructed, [job])
+        for job in artificialCriticalJobs[artificialPath.path[1]]
+            newpath = (path = [job], depth = artificialPath.depth + 1)
+            if newpath.path ∉ artificial_path_candidates_constructed && newpath.depth <= carlier_depth
+                pushfirst!(artificial_paths_candidates, newpath)
+                push!(artificial_path_candidates_constructed, newpath.path)
             end
         end
     end
-    return collect(real_paths), collect(artificial_paths)
+    return real_paths, artificial_paths
 end
 
 h(J::Vector{Int}, r::Vector{Int}, q::Vector{Int}, p::Vector{Int}) = minimum(j->r[j], J) + sum(j->p[j], J) + minimum(j->q[j], J)
@@ -317,7 +319,7 @@ end
 
 carlier_dpc(p::Vector{Int}, r::Vector{Int}, q::Vector{Int}, delay::Matrix{Int}; with_priority_queue=true, carlier_timeout::Union{Nothing,Float64} = nothing) = carlier_dpc(p, r, q, delay, nothing; with_priority_queue=with_priority_queue, carlier_timeout = carlier_timeout)
 
-function carlier_dpc(p::Vector{Int}, r::Vector{Int}, q::Vector{Int}, delay::Matrix{Int}, yield_ref; with_priority_queue=true, carlier_timeout::Union{Nothing,Float64} = nothing)
+function carlier_dpc(p::Vector{Int}, r::Vector{Int}, q::Vector{Int}, delay::Matrix{Int}, yield_ref; with_priority_queue=true, carlier_timeout::Union{Nothing,Float64} = nothing, carlier_depth::Int = typemax(Int), metadata::Dict{String,Any}=Dict{String,Any}())
     start_time = time()
     bestResult::Union{SchrageResult,Nothing} = nothing
     bestNode::Union{DPCNode,Nothing} = nothing
@@ -328,7 +330,7 @@ function carlier_dpc(p::Vector{Int}, r::Vector{Int}, q::Vector{Int}, delay::Matr
 
     microruns += 1
 
-    schrage_result::SchrageResult = schrage_dpc(p, r, q, delay)
+    schrage_result::SchrageResult = schrage_dpc(p, r, q, delay; carlier_depth=carlier_depth)
     Cmax = schrage_result.Cmax
     path_with_Jc::PathWithJc = critical_path_with_jc(schrage_result, p, r, q, delay)
     J_c = path_with_Jc.J_c
@@ -408,6 +410,7 @@ function carlier_dpc(p::Vector{Int}, r::Vector{Int}, q::Vector{Int}, delay::Matr
                 F = Cmax
             end
             if carlier_timeout !== nothing && time() - start_time > carlier_timeout
+                metadata["timeouts_carlier"] = get(metadata, "timeouts_carlier", 0) + 1
                 return (F, bestResult.U, microruns)
             end
         end
