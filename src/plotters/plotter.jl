@@ -4,13 +4,17 @@ using PlotlyJS
 export plot_geometric_approach, gantt_chart
 
 """
-    plot_geometric_approach(solution::ShopSchedule)
+    plot_geometric_approach(solution::ShopSchedule; title::Union{Nothing,String}=nothing, width=800, height=800, aspectmode="auto")
 
 This function takes a `ShopSchedule` object as input and returns a plot of the solution using a geometric approach, when n == 2. 
 Plot is generated using PlotlyJS.
 
 # Arguments
 - `solution::ShopSchedule`: A `ShopSchedule` object representing the solution to a job shop scheduling problem.
+- `title::Union{Nothing,String}=nothing`: Title of the plot. If `nothing`, the title will be the name of the instance.
+- `width=800`: Width of the plot.
+- `height=800`: Height of the plot.
+- `aspectmode="auto"`: Aspect mode of the plot.
 
 # Returns
 - A plot of the solution using a geometric approach.

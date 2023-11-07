@@ -5,7 +5,7 @@ export DisjunctiveWeightedGraph
 
 DisjunctiveWeightedGraph is a mutable struct that represents a disjunctive weighted graph. It contains two fields:
 - conjunctiveGraph: a SimpleDirectedWeightedGraphAdj{T,U} representing the conjunctive graph.
-- disjunctiveGraph: a SimpleDirectedWeightedGraphAdj{T,U} representing the disjunctive graph.
+- selection: a SimpleDirectedWeightedGraphAdj{T,U} representing the selection of disjunctive graph.
 
 # Arguments
 - `T::Type{<:Integer}`: The integer type of the vertices.
@@ -13,10 +13,10 @@ DisjunctiveWeightedGraph is a mutable struct that represents a disjunctive weigh
 
 # Fields
 - `conjunctiveGraph::SimpleDirectedWeightedGraphAdj{T,U}`: The conjunctive graph.
-- `disjunctiveGraph::SimpleDirectedWeightedGraphAdj{T,U}`: The disjunctive graph.
+- `selection::SimpleDirectedWeightedGraphAdj{T,U}`: The selection of disjunctive graph.
 
 # Constructors
-- `DisjunctiveWeightedGraph{T,U}(conjunctiveGraph::SimpleDirectedWeightedGraphAdj{T,U}, disjunctiveGraph::SimpleDirectedWeightedGraphAdj{T,U})`: Constructs a new DisjunctiveWeightedGraph{T,U} with the given conjunctiveGraph and disjunctiveGraph.
+- `DisjunctiveWeightedGraph{T,U}(conjunctiveGraph::SimpleDirectedWeightedGraphAdj{T,U}, selection::SimpleDirectedWeightedGraphAdj{T,U})`: Constructs a new DisjunctiveWeightedGraph{T,U} with the given conjunctiveGraph and selection.
 
 # Examples
 ```jldoctest
@@ -26,13 +26,13 @@ DisjunctiveWeightedGraph is a mutable struct that represents a disjunctive weigh
         [SimpleDirectedWeightedEdge(3, 4, 1)],
         [SimpleDirectedWeightedEdge(4, 5, 1)]
     ])
-    disjunctiveGraph = SimpleDirectedWeightedGraphAdj{Int,Int}([
+    selection = SimpleDirectedWeightedGraphAdj{Int,Int}([
         [SimpleDirectedWeightedEdge(1, 2, 1), SimpleDirectedWeightedEdge(1, 3, 1)],
         [SimpleDirectedWeightedEdge(2, 4, 1)],
         [SimpleDirectedWeightedEdge(3, 4, 1)],
         [SimpleDirectedWeightedEdge(4, 5, 1)]
     ])
-    disjunctiveWeightedGraph = DisjunctiveWeightedGraph(conjuctiveGraph, disjunctiveGraph)
+    disjunctiveWeightedGraph = DisjunctiveWeightedGraph(conjuctiveGraph, selection)
 ```
 """
 mutable struct DisjunctiveWeightedGraph{T<:Integer, U<:Real} <: AbstractGraph{T}

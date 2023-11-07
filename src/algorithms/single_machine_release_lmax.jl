@@ -41,6 +41,7 @@ function single_machine_release_LMax(
     node = SingleMachineReleaseLMaxNode([i for i in 1:length(p)], [], 0, 0)
     
     node.lowerBound, possible_sequence = single_machine_release_LMax_pmtn([JobData(p[i], r[i], d[i], i, nothing) for i in node.jobs], node.jobsOrdered, node.time)
+    microruns += 1 
     if possible_sequence !== nothing
         node.jobsOrdered = [node.jobsOrdered; possible_sequence]
         node.jobs = Int[]

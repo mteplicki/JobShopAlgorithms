@@ -102,7 +102,32 @@ Graphs.add_vertex!(graph::SimpleDiWeightedGraphAdj{T,U}) where {T<:Integer, U<:R
     graph.edges_reversed[length(graph.edges_reversed)+1] = DiWeightedEdge{T,U}[]
 end 
 
+"""
+    inedges(graph::Graph, v::T) where {T<:Integer}
+
+Returns an array of edges that point to vertex `v` in the directed weighted graph `graph`.
+
+# Arguments
+- `graph::Graph`: A directed weighted graph.
+- `v::T`: A vertex in the graph.
+
+# Returns
+- An array of edges that point to vertex `v`.
+"""
 inedges(graph::SimpleDiWeightedGraphAdj, v::T) where {T<:Integer} = graph.edges_reversed[v]
+
+"""
+    outedges(graph::Graph, v::T) where {T<:Integer}
+
+Returns an array of edges that originate from vertex `v` in the directed weighted graph `graph`.
+
+# Arguments
+- `graph::Graph`: A directed weighted graph.
+- `v::T`: A vertex in the graph.
+
+# Returns
+- An array of edges that originate from vertex `v`.
+"""
 outedges(graph::SimpleDiWeightedGraphAdj, v::T) where {T<:Integer} = graph.edges[v]
 
 Graphs.outneighbors(graph::SimpleDiWeightedGraphAdj, v::T) where {T<:Integer} = (edge.dst for edge in graph.edges[v])
