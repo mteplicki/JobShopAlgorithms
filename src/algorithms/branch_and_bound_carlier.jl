@@ -9,7 +9,8 @@ export branchandbound_carlier
         yielding::Bool = false,
         with_dpc::Bool = false,
         with_priority_queue::Bool = false,
-        io_print_best_node::Union{IO, Nothing} = nothing
+        io_print_best_node::Union{IO, Nothing} = nothing,
+        heuristic_UB::Bool = false
     )
 
 Branch and Bound algorithm for the Job Shop Scheduling problem `J || Cmax` with no recirculation.
@@ -20,6 +21,7 @@ Branch and Bound algorithm for the Job Shop Scheduling problem `J || Cmax` with 
 - `with_dpc::Bool=true`: If `true`, the algorithm will use the DPC algorithm to find the longest path in the graph. Otherwise, the algorithm will use the Carlier algorithm.
 - `with_priority_queue::Bool=true`: If `true`, the algorithm will use a priority queue to find the node in Carlier algorithm. Otherwise, it will use a simple stack.
 - `io_print_best_node::Union{IO, Nothing} = nothing`: If not `nothing`, the algorithm will print the best node found so far to the given IO.
+- `heuristic_UB::Bool=false`: If `true`, the algorithm will use the Shifting Bottleneck algorithm to find the upper bound of the solution.
 # Returns
 - `ShopSchedule`: A ShopSchedule object representing the solution to the job shop problem.
 """
@@ -28,7 +30,8 @@ function branchandbound_carlier(
     yielding::Bool = false,
     with_dpc::Bool = false,
     with_priority_queue::Bool = false,
-    io_print_best_node::Union{IO, Nothing} = nothing
+    io_print_best_node::Union{IO, Nothing} = nothing,
+    heuristic_UB::Bool = false
 )
     _ , timeSeconds, bytes = @timed begin 
 
@@ -37,7 +40,7 @@ function branchandbound_carlier(
     microruns = 0
     metadata = Dict{String, Any}()
     start_time = time()
-    algorithm_name = "Branch and Bound" * (with_dpc ? " - DPC" : " - Carlier") * (with_priority_queue ? "" : " with stack")
+    algorithm_name = "Branch and Bound" * (with_dpc ? " - DPC" : " - Carlier") * (with_priority_queue ? "" : " with stack") * (with_heuristic_UB ? " with heuristic UB" : "")
     skippedNodes = 0
     terminalNodes = 0
     nodesGenerated = 0
@@ -47,6 +50,18 @@ function branchandbound_carlier(
     n, m, n_i, p, μ = instance.n, instance.m, instance.n_i, instance.p, instance.μ
     jobToGraphNode, graphNodeToJob, machineJobs, _ = generate_util_arrays(n, m, n_i, μ)
     upperBound = typemax(Int64)
+    if heuristic_UB
+        result = if job_recirculation()(instance)
+            shiftingbottleneckcarlier(instance; yielding = yielding, with_dpc = false, with_priority_queue = with_priority_queue)
+        else
+            shiftingbottleneckcarlier(instance; yielding = yielding, with_dpc = true, with_priority_queue = with_priority_queue)
+        end
+        if result isa ShopSchedule
+            upperBound = result.objectiveValue
+        else
+            metadata["calculatedUBerror"] = true
+        end
+    end
     selectedNode::Union{ActiveScheduleNode,Nothing} = nothing
     S = Stack{ActiveScheduleNode}()
     conjuctiveGraph = generate_conjuctive_graph(n, n_i, p, jobToGraphNode)
@@ -65,6 +80,7 @@ function branchandbound_carlier(
     node.r, rGraph = generate_release_times(disjunctiveGraph, n_i, graphNodeToJob)
     node.lowerBound = rGraph[sum(n_i)+2]
     push!(S, node)
+
     
 
     test = -9

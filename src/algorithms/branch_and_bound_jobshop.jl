@@ -8,7 +8,8 @@ export branchandbound
         instance::JobShopInstance;
         bounding_algorithm::Symbol=:no_pmtn,
         yielding::Bool=false,
-        io_print_best_node::Union{IO, Nothing} = nothing
+        io_print_best_node::Union{IO, Nothing} = nothing,
+        heuristic_UB::Bool = false,
     )
 
 Branch and Bound algorithm for the Job Shop Scheduling problem `J | rcrc | Cmax` with recirculation.
@@ -18,6 +19,7 @@ Branch and Bound algorithm for the Job Shop Scheduling problem `J | rcrc | Cmax`
 - `bounding_algorithm::Symbol=:no_pmtn`: Algorithm used to bound the lower bound of the solution. Possible values are `:no_pmtn` for `1 | r_j | Lmax` and `:pmtn` for `1 | r_j, pmtn | Lmax`. Default value is `:no_pmtn`.
 - `yielding::Bool=false`: If `true`, the algorithm will yield after each iteration. This is useful for timeouting the algorithm.
 - `io_print_best_node::Union{IO, Nothing} = nothing`: If not `nothing`, the algorithm will print the best node found so far to the given IO.
+- `heuristic_UB::Bool=false`: If `true`, the algorithm will use the Shifting Bottleneck algorithm to find the upper bound of the solution.
 # Returns
 - `ShopSchedule`: A ShopSchedule object representing the solution to the job shop problem.
 """
@@ -25,7 +27,8 @@ function branchandbound(
     instance::JobShopInstance;
     bounding_algorithm::Symbol=:no_pmtn,
     yielding::Bool = false,
-    io_print_best_node::Union{IO, Nothing} = nothing
+    io_print_best_node::Union{IO, Nothing} = nothing,
+    heuristic_UB::Bool = false,
 )
     _ , timeSeconds, bytes = @timed begin 
 
@@ -47,6 +50,18 @@ function branchandbound(
     end
     jobToGraphNode, graphNodeToJob, machineJobs, _ = generate_util_arrays(n, m, n_i, μ)
     upperBound = typemax(Int64)
+    if heuristic_UB
+        result = if job_recirculation()(instance)
+            shiftingbottleneckcarlier(instance; yielding = yielding, with_dpc = false)
+        else
+            shiftingbottleneckcarlier(instance; yielding = yielding, with_dpc = true)
+        end
+        if result isa ShopSchedule
+            upperBound = result.objectiveValue
+        else
+            metadata["calculatedUBerror"] = true
+        end
+    end
     selectedNode::Union{ActiveScheduleNode,Nothing} = nothing
     S = Stack{ActiveScheduleNode}()
     conjuctiveGraph = generate_conjuctive_graph(n, n_i, p, jobToGraphNode)
