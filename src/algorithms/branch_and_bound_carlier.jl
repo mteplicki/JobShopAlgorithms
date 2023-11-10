@@ -40,7 +40,7 @@ function branchandbound_carlier(
     microruns = 0
     metadata = Dict{String, Any}()
     start_time = time()
-    algorithm_name = "Branch and Bound" * (with_dpc ? " - DPC" : " - Carlier") * (with_priority_queue ? "" : " with stack") * (with_heuristic_UB ? " with heuristic UB" : "")
+    algorithm_name = "Branch and Bound" * (with_dpc ? " - DPC" : " - Carlier") * (with_priority_queue ? "" : " with stack") * (heuristic_UB ? " with heuristic UB" : "")
     skippedNodes = 0
     terminalNodes = 0
     nodesGenerated = 0

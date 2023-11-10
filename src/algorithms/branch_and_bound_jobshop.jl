@@ -41,7 +41,7 @@ function branchandbound(
     nodesGenerated = 0
     metadata = Dict{String, Any}()
     start_time = time()
-    algorithm_name = "Branch and Bound - " * (bounding_algorithm == :pmtn ? String("1|r_j, pmtn|Lmax") : String("1|R_j|Lmax"))
+    algorithm_name = "Branch and Bound - " * (bounding_algorithm == :pmtn ? String("1|r_j, pmtn|Lmax") : String("1|R_j|Lmax")) * (heuristic_UB ? " with heuristic UB" : "")
 
     # algorytm Branch and Bound
     # pomocnicze tablice
