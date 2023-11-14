@@ -1,5 +1,39 @@
 export JobShopInstance
 
+"""
+    struct JobShopInstance <: AbstractShop
+
+    JobShopInstance(
+        n::Int64,
+        m::Int64,
+        n_i::Vector{Int},
+        p::Vector{Vector{Int}},
+        μ::Vector{Vector{Int}};
+        d::Vector{Int}=zeros(Int64, n),
+        name::String=""
+    )
+
+JobShopInstance represents a job shop instance, which is a type of scheduling problem.
+
+# Arguments
+- `n::Int64`: number of jobs
+- `m::Int64`: number of machines
+- `n_i::Vector{Int}`: number of operations for each job
+- `p::Vector{Vector{Int}}`: processing times for each operation
+- `μ::Vector{Vector{Int}}`: machines assigned to each operation
+- `d::Vector{Int} = zeros(Int64, n)`: due dates for each job
+- `name::String = ""`: name of the instance
+
+# Fields
+- `n`: an integer representing the number of jobs
+- `m`: an integer representing the number of machines
+- `n_i`: a vector of integers representing the number of operations for each job
+- `p`: a vector of vectors of integers representing the processing times for each operation
+- `μ`: a vector of vectors of integers representing the machines assigned to each operation
+- `d`: a vector of integers representing the due dates for each job
+- `name`: a string representing the name of the instance
+
+"""
 struct JobShopInstance <: AbstractShop
     n::Int64
     m::Int64

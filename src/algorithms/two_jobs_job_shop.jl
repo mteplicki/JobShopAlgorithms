@@ -59,7 +59,7 @@ end
 """
     two_jobs_job_shop(instance::JobShopInstance; yielding::Bool=false)
 
-Solves the two jobs job shop `J | n=2 | Cmax` problem for a given `instance` of `JobShopInstance` with recirculation and machine
+Solves the two jobs job shop ``J | n=2 | Cmax`` problem for a given `instance` of `JobShopInstance` with recirculation and machine
 repetition allowed. Complexity: `O(r log r)`, where `r = sum(n_i)` is the number of operations.
 
 # Arguments

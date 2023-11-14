@@ -2,6 +2,36 @@ export ShopSchedule, ShopResult, ShopError
 
 abstract type ShopResult end
 
+"""
+    ShopError <: ShopResult
+
+    ShopError(
+        instance::AbstractShop,
+        error::String,
+        objectiveFunction::ObjectiveFunction;
+        algorithm::String="",
+        metadata::Dict{String, Any}=Dict{String, Any}(),
+        date::DateTime=now()
+    )
+
+A struct representing an error result of a shop scheduling algorithm.
+
+# Arguments
+- `instance::AbstractShop`: The instance of the shop problem.
+- `error::String`: The error message.
+- `objectiveFunction::ObjectiveFunction`: The objective function used in the algorithm.
+- `algorithm::String="": The name of the algorithm used.
+- `metadata::Dict{String, Any}=Dict{String, Any}()`: Additional metadata about the result.
+- `date::DateTime=now()`: The date and time when the result was obtained.
+
+# Fields
+- `instance::JobShopInstance`: The instance of the shop problem.
+- `error::String`: The error message.
+- `objectiveFunction::ObjectiveFunction`: The objective function used in the algorithm.
+- `algorithm::String`: The name of the algorithm used.
+- `date::DateTime`: The date and time when the result was obtained.
+- `metadata::Dict{String, Any}`: Additional metadata about the result.
+"""
 struct ShopError <: ShopResult
     instance::JobShopInstance
     error::String

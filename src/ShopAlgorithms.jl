@@ -1,3 +1,7 @@
+"""
+This module contains the implementation of algorithms for solving job shop scheduling problems.
+It exports the following modules: Algorithms, ShopInstances, InstanceLoaders, Plotters, Constraints, ShopGraphs.
+"""
 module ShopAlgorithms
     include("constraints/constraints.jl")
     include("shop_instances/shop_instances.jl")

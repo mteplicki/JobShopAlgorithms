@@ -1,3 +1,6 @@
+"""
+Module for plotting functions and data.
+"""
 module Plotters
 using ..ShopAlgorithms.ShopInstances
 using PlotlyJS

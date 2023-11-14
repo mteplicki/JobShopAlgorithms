@@ -19,6 +19,18 @@ function generate_util_arrays(n, m, n_i, μ)
     return jobToGraphNode, graphNodeToJob, machineJobs, machineWithJobs
 end
 
+"""
+    check_feasability(schedule::ShopSchedule)
+
+Check the feasability of a given schedule for a job-shop problem instance.
+
+# Arguments
+- `schedule::ShopSchedule`: A schedule for a job-shop problem instance.
+
+# Returns
+- `true` if the schedule is feasible, `false` otherwise.
+
+"""
 function check_feasability(schedule::ShopSchedule)
     _, _ , machine_jobs, _ = generate_util_arrays(schedule.instance.n, schedule.instance.m, schedule.instance.n_i, schedule.instance.μ)
     for machine in 1:schedule.instance.m

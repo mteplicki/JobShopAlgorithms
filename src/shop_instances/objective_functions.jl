@@ -1,7 +1,8 @@
-export Cmax_function
-export Lmax_function
-export ObjectiveFunction
+export Cmax_function, Lmax_function, ObjectiveFunction
 
+"""
+Enum representing different objective functions for shop scheduling problems.
+"""
 @enum ObjectiveFunction begin
     Cmax_function
     Lmax_function

@@ -1,3 +1,6 @@
+"""
+Module containing various Job Shop algorithms.
+"""
 module Algorithms
     using ..ShopAlgorithms
     using ..ShopAlgorithms.ShopInstances
