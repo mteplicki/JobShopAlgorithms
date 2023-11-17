@@ -58,10 +58,12 @@ function branchandbound_carlier(
         end
         if result isa ShopSchedule
             upperBound = result.objectiveValue
+            metadata["calculatedUB"] = true
         else
-            metadata["calculatedUBerror"] = true
+            metadata["calculatedUB"] = false
         end
     end
+    starting_upper_bound = upperBound
     selectedNode::Union{ActiveScheduleNode,Nothing} = nothing
     S = Stack{ActiveScheduleNode}()
     conjuctiveGraph = generate_conjuctive_graph(n, n_i, p, jobToGraphNode)
@@ -81,12 +83,8 @@ function branchandbound_carlier(
     node.lowerBound = rGraph[sum(n_i)+2]
     push!(S, node)
 
-    
-
-    test = -9
     while !isempty(S)
         node = pop!(S)
-
 
         try_yield(yield_ref)
         if isempty(node.Ω)
@@ -102,8 +100,7 @@ function branchandbound_carlier(
             end
             continue
         end
-        if node.lowerBound >= upperBound
-            skippedNodes += 1
+        if (upperBound < starting_upper_bound && node.lowerBound >= upperBound) || (upperBound == starting_upper_bound && node.lowerBound > upperBound)            skippedNodes += 1
             continue
         end
         # wygeneruj zbiór Ω_prim, czyli zbiór operacji, które mogą być zaplanowane w tym węźle
@@ -170,7 +167,7 @@ function branchandbound_carlier(
         end
         # filtrujemy węzły, które mają dolną granicę większą niż obecna górna granica algorytmu
         # i sortujemy je po dolnej granicy, zaczynamy od najbardziej obiecujących kandydatów
-        filter!(x -> x.lowerBound < upperBound, listOfNodes)
+        filter!(x -> ((upperBound < starting_upper_bound && x.lowerBound < upperBound)|| (upperBound == starting_upper_bound && x.lowerBound <= upperBound)), listOfNodes)
         sort!(listOfNodes, by=x -> x.lowerBound, rev=true)
         skippedNodes += (length(Ω_prim) - length(listOfNodes))
         for newNode1 in listOfNodes
@@ -186,7 +183,7 @@ function branchandbound_carlier(
         selectedNode.r + p,
         maximum(maximum.(selectedNode.r + p)),
         Cmax_function;
-        algorithm = "Branch and Bound" * (with_dpc ? " - DPC" : " - Carlier") * (with_priority_queue ? "" : " with stack"),
+        algorithm = algorithm_name,
         microruns = microruns,
         timeSeconds = timeSeconds,
         memoryBytes = bytes,
