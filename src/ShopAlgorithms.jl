@@ -20,5 +20,5 @@ module ShopAlgorithms
         result2 = Algorithms.branchandbound_carlier(instance; with_dpc=false, with_priority_queue=false, heuristic_UB=true)
         println(result2)
     end
-    test1()
+    # test1()
 end # module JobShopAlgorithms
