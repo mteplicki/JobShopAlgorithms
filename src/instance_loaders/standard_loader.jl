@@ -1,5 +1,10 @@
 export JobShopFileSpecification, StandardSpecification, TaillardSpecification
 
+"""
+    abstract type JobShopFileSpecification
+
+Abstract type representing a file specification for a job shop problem instance.
+"""
 abstract type JobShopFileSpecification end
 
 """
